@@ -1,21 +1,73 @@
 # OS
 .DS_Store
+Thumbs.db
 
 # Environments
 .env
 .env.*
+.envrc
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.manifest
+*.spec
+
+# Python testing/coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
 
 # Node
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Logs
 *.log
+logs/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.bmp
+*.webp
+*.tiff
+*.svg
+
+# Database
+*.db
+*.sqlite3
+
+# Misc
+*.bak
+*.tmp
+*.temp
