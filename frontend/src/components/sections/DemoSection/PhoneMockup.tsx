@@ -12,7 +12,7 @@ export const PhoneMockup = forwardRef<HTMLDivElement, PhoneMockupProps>(
       <div
         ref={ref}
         id="phone-container"
-        className="w-[320px] h-[640px] bg-obsidian rounded-[3rem] border-8 border-surface-light shadow-2xl relative overflow-hidden"
+        className="w-[280px] h-[560px] lg:w-[320px] lg:h-[640px] bg-obsidian rounded-[3rem] border-8 border-surface-light shadow-2xl relative overflow-hidden"
       >
         {/* Notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-20" />

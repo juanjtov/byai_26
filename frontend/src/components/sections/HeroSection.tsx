@@ -112,7 +112,7 @@ export function HeroSection() {
             variants={slideInRight}
             initial="hidden"
             animate="visible"
-            className="hidden lg:flex justify-center lg:justify-end"
+            className="flex justify-center lg:justify-end mt-12 lg:mt-0 scale-75 lg:scale-100 origin-top"
           >
             <HeroDemo />
           </motion.div>

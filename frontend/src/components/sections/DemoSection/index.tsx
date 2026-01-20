@@ -35,7 +35,7 @@ export function DemoSection() {
 
   return (
     <section id="demo" className="w-full py-20 bg-tungsten relative border-y border-white/5">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
         {/* Left Column: Controls */}
         <div>
           <h2 className="text-4xl md:text-5xl font-light mb-6 text-ivory">

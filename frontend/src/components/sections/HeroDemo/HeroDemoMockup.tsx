@@ -17,7 +17,7 @@ export function HeroDemoMockup({ children }: HeroDemoMockupProps) {
 
       {/* Tablet mockup frame */}
       <div
-        className="relative w-[420px] h-[300px] rounded-3xl overflow-hidden"
+        className="relative w-[300px] h-[215px] lg:w-[420px] lg:h-[300px] rounded-3xl overflow-hidden"
         style={{
           background: 'var(--color-obsidian)',
           border: '6px solid var(--color-surface-light)',
