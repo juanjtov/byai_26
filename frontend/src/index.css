@@ -267,6 +267,82 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 20px rgba(139, 158, 125, 0.4);
 }
 
+/* Copper glow utilities */
+.glow-copper {
+  box-shadow: 0 0 20px rgba(200, 141, 116, 0.4);
+}
+
+.glow-copper-strong {
+  box-shadow: 0 0 30px rgba(200, 141, 116, 0.6);
+}
+
+/* Gentle floating animation for demo mockup */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: perspective(1000px) rotateY(-5deg) rotateX(2deg) translateY(0);
+  }
+  50% {
+    transform: perspective(1000px) rotateY(-5deg) rotateX(2deg) translateY(-10px);
+  }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 6s ease-in-out infinite;
+}
+
+/* Signature writing animation */
+@keyframes signature-write {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-signature-write {
+  animation: signature-write 0.8s ease-in-out forwards;
+}
+
+/* Checkmark draw animation */
+@keyframes checkmark-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkmark-draw {
+  animation: checkmark-draw 0.3s ease-out forwards;
+}
+
+/* Point spawn animation */
+@keyframes point-spawn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-point-spawn {
+  animation: point-spawn 0.15s ease-out forwards;
+}
+
+/* Haptic shake */
+@keyframes haptic-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.animate-haptic-shake {
+  animation: haptic-shake 0.1s ease-in-out 2;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {

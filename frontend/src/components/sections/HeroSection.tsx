@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { Button, Container, GradientText } from '@/components/common';
 import { AnimatedOrb, GridBackground } from '@/components/ui';
-import { fadeInUp, staggerContainer } from '@/lib/animations';
+import { fadeInUp, staggerContainer, slideInRight } from '@/lib/animations';
+import { HeroDemo } from './HeroDemo';
 
 const stats = [
   { value: '10 min', label: 'Average time to contract' },
@@ -36,72 +37,86 @@ export function HeroSection() {
         />
       </div>
 
-      <Container className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-col justify-center py-20">
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="max-w-4xl"
-        >
-          {/* Eyebrow */}
-          <motion.div variants={fadeInUp} className="mb-8 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-gold animate-gold-pulse" />
-            <span className="text-sm uppercase tracking-widest text-body">
-              Now in Private Beta
-            </span>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            variants={fadeInUp}
-            className="font-display text-5xl font-light leading-[1.1] md:text-7xl lg:text-8xl"
-          >
-            <span className="block text-ivory">From Scan</span>
-            <span className="block">
-              <GradientText>to Signed Contract</GradientText>
-            </span>
-            <span className="block text-ivory/40">in Ten Minutes</span>
-          </motion.h1>
-
-          {/* Subheadline */}
-          <motion.p
-            variants={fadeInUp}
-            className="mt-8 max-w-2xl text-lg leading-relaxed text-body md:text-xl"
-          >
-            The AI-powered estimator that turns your LiDAR scan into instant,
-            accurate pricing—and a signed contract before you leave the room.
-          </motion.p>
-
-          {/* CTAs */}
+      <Container className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center py-20">
+        {/* Two-column grid layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-20 items-center w-full">
+          {/* Left Column: Text Content */}
           <motion.div
-            variants={fadeInUp}
-            className="mt-10 flex flex-col gap-4 sm:flex-row"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="max-w-xl"
           >
-            <Button variant="primary" size="lg">
-              Request Early Access
-            </Button>
-            <Button variant="outline" size="lg">
-              Watch the Demo
-            </Button>
+            {/* Eyebrow */}
+            <motion.div variants={fadeInUp} className="mb-8 flex items-center gap-3">
+              <span className="h-2 w-2 rounded-full bg-gold animate-gold-pulse" />
+              <span className="text-sm uppercase tracking-widest text-body">
+                Now in Private Beta
+              </span>
+            </motion.div>
+
+            {/* Headline */}
+            <motion.h1
+              variants={fadeInUp}
+              className="font-display text-4xl font-light leading-[1.1] sm:text-5xl md:text-6xl xl:text-7xl"
+            >
+              <span className="block text-ivory whitespace-nowrap">From Scan</span>
+              <span className="block whitespace-nowrap">
+                <GradientText>to Signed Contract</GradientText>
+              </span>
+              <span className="block text-ivory/40 whitespace-nowrap">in Ten Minutes</span>
+            </motion.h1>
+
+            {/* Subheadline */}
+            <motion.p
+              variants={fadeInUp}
+              className="mt-8 max-w-lg text-lg leading-relaxed text-body md:text-xl"
+            >
+              The AI-powered estimator that turns your LiDAR scan into instant,
+              accurate pricing—and a signed contract before you leave the room.
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div
+              variants={fadeInUp}
+              className="mt-10 flex flex-col gap-4 sm:flex-row"
+            >
+              <Button variant="primary" size="lg">
+                Request Early Access
+              </Button>
+              <Button variant="outline" size="lg">
+                Watch the Demo
+              </Button>
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              variants={fadeInUp}
+              className="mt-16 grid grid-cols-3 gap-6 border-t border-ivory/10 pt-8"
+            >
+              {stats.map((stat) => (
+                <div key={stat.label} className="group cursor-default">
+                  <div className="font-display text-2xl font-light text-copper md:text-3xl lg:text-4xl transition-all duration-300 group-hover:glow-sage">
+                    {stat.value}
+                  </div>
+                  <div className="mt-2 text-[10px] md:text-xs uppercase tracking-wider text-body">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </motion.div>
           </motion.div>
 
-          {/* Stats */}
+          {/* Right Column: Demo Component */}
           <motion.div
-            variants={fadeInUp}
-            className="mt-20 grid grid-cols-3 gap-8 border-t border-ivory/10 pt-10"
+            variants={slideInRight}
+            initial="hidden"
+            animate="visible"
+            className="hidden lg:flex justify-center lg:justify-end"
           >
-            {stats.map((stat) => (
-              <div key={stat.label} className="group cursor-default">
-                <div className="font-display text-3xl font-light text-copper md:text-4xl transition-all duration-300 group-hover:glow-sage">
-                  {stat.value}
-                </div>
-                <div className="mt-2 text-xs uppercase tracking-wider text-body">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
+            <HeroDemo />
           </motion.div>
-        </motion.div>
+        </div>
       </Container>
 
       {/* Scroll indicator */}
