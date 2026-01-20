@@ -24,10 +24,10 @@ export function Button({
     'inline-flex items-center justify-center font-medium tracking-wider uppercase transition-all duration-300';
 
   const variants = {
-    primary: 'bg-amber text-charcoal hover:bg-amber-hover',
+    primary: 'bg-copper text-obsidian hover:bg-copper-hover',
     secondary:
-      'bg-charcoal-light text-ivory border border-ivory/10 hover:border-amber/30',
-    outline: 'bg-transparent text-amber border border-amber hover:bg-amber/10',
+      'bg-tungsten text-ivory border border-ivory/10 hover:border-copper/30',
+    outline: 'bg-transparent text-copper border border-copper hover:bg-copper/10',
   };
 
   const sizes = {

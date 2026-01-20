@@ -55,7 +55,7 @@ const steps = [
 
 export function SolutionSection() {
   return (
-    <section id="solution" className="bg-charcoal py-32">
+    <section id="solution" className="bg-obsidian py-32">
       <Container>
         <SectionHeader
           eyebrow="The Solution"
@@ -71,12 +71,12 @@ export function SolutionSection() {
           viewport={viewportConfig}
           className="mx-auto mb-20 flex justify-center"
         >
-          <div className="inline-flex items-center gap-4 rounded-full border border-amber/20 bg-amber/5 px-6 py-3">
+          <div className="inline-flex items-center gap-4 rounded-full border border-signal/30 bg-signal/5 px-6 py-3 glow-signal">
             <span className="text-sm text-ivory/60 line-through">28+ days</span>
-            <svg className="h-4 w-4 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4 w-4 text-signal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-            <span className="font-medium text-amber">10 minutes</span>
+            <span className="font-medium text-signal text-glow-signal">10 minutes</span>
           </div>
         </motion.div>
 
@@ -94,17 +94,17 @@ export function SolutionSection() {
               variants={fadeInUp}
               className="group relative"
             >
-              <div className="relative overflow-hidden rounded-2xl border border-ivory/5 bg-charcoal-light p-8 transition-all duration-300 hover:border-amber/30">
-                {/* Gradient border on hover */}
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="relative overflow-hidden rounded-2xl border border-ivory/5 bg-tungsten p-8 transition-all duration-300 hover:border-signal/30">
+                {/* Gradient border on hover - Signal Green */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
                 {/* Large faded number */}
-                <span className="absolute right-4 top-4 font-display text-8xl font-light text-ivory/[0.03] transition-all group-hover:text-amber/10">
+                <span className="absolute right-4 top-4 font-display text-8xl font-light text-ivory/[0.03] transition-all group-hover:text-signal/10">
                   {step.number}
                 </span>
 
                 {/* Icon */}
-                <div className="relative mb-6 inline-flex rounded-xl border border-ivory/10 bg-charcoal p-4 text-amber">
+                <div className="relative mb-6 inline-flex rounded-xl border border-ivory/10 bg-obsidian p-4 text-copper transition-all duration-300 group-hover:border-signal/30 group-hover:text-signal group-hover:glow-signal">
                   {step.icon}
                 </div>
 

@@ -1,8 +1,17 @@
+export type PackageTier = 'Economy' | 'Standard' | 'Premium';
+
+export interface MaterialDetails {
+  flooring: string;
+  cabinets: string;
+  countertop: string;
+  timeline: string;
+}
+
 export interface Package {
-  name: 'Essential' | 'Signature' | 'Luxe';
+  name: PackageTier;
   price: number;
   features: string[];
-  multiplier: number;
+  materials: MaterialDetails;
 }
 
 export interface ChecklistItem {

@@ -9,15 +9,15 @@ interface PackageCardProps {
 }
 
 export function PackageCard({ pkg, isActive, onClick }: PackageCardProps) {
-  const isSignature = pkg.name === 'Signature';
+  const isStandard = pkg.name === 'Standard';
 
   return (
     <motion.button
       onClick={onClick}
       className={`relative w-full rounded-xl border p-6 text-left transition-all duration-300 ${
         isActive
-          ? 'border-amber/50 bg-amber/5'
-          : 'border-ivory/5 bg-charcoal hover:border-ivory/20'
+          ? 'border-copper/50 bg-copper/5'
+          : 'border-ivory/5 bg-obsidian hover:border-ivory/20'
       }`}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -28,8 +28,8 @@ export function PackageCard({ pkg, isActive, onClick }: PackageCardProps) {
       )}
 
       {/* Recommended badge */}
-      {isSignature && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber px-3 py-1 text-xs font-medium uppercase tracking-wider text-charcoal">
+      {isStandard && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-copper px-3 py-1 text-xs font-medium uppercase tracking-wider text-obsidian">
           Popular
         </span>
       )}
@@ -38,7 +38,7 @@ export function PackageCard({ pkg, isActive, onClick }: PackageCardProps) {
       <div className="mb-4">
         <h4
           className={`font-display text-xl ${
-            isActive ? 'text-amber' : 'text-ivory'
+            isActive ? 'text-copper' : 'text-ivory'
           }`}
         >
           {pkg.name}
@@ -69,7 +69,7 @@ export function PackageCard({ pkg, isActive, onClick }: PackageCardProps) {
             }`}
           >
             <svg
-              className={`h-4 w-4 ${isActive ? 'text-amber' : 'text-ivory/30'}`}
+              className={`h-4 w-4 ${isActive ? 'text-copper' : 'text-ivory/30'}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -85,7 +85,7 @@ export function PackageCard({ pkg, isActive, onClick }: PackageCardProps) {
           </li>
         ))}
         {pkg.features.length > 3 && (
-          <li className={`text-sm ${isActive ? 'text-amber' : 'text-ivory/30'}`}>
+          <li className={`text-sm ${isActive ? 'text-copper' : 'text-ivory/30'}`}>
             +{pkg.features.length - 3} more
           </li>
         )}

@@ -16,12 +16,12 @@ export function CTASection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-charcoal py-32">
+    <section className="relative overflow-hidden bg-obsidian py-32">
       {/* Radial gradient background */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(201, 165, 77, 0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, rgba(200, 141, 116, 0.15) 0%, transparent 70%)',
         }}
       />
 
@@ -50,7 +50,7 @@ export function CTASection() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="flex-1 rounded-none border border-ivory/10 bg-charcoal-light px-6 py-4 text-ivory placeholder-ivory/30 transition-colors focus:border-amber focus:outline-none"
+                  className="flex-1 rounded-none border border-ivory/10 bg-tungsten px-6 py-4 text-ivory placeholder-ivory/30 transition-all duration-300 focus:border-signal focus:outline-none focus:shadow-[0_0_20px_rgba(207,255,4,0.3)]"
                 />
                 <Button type="submit" variant="primary" size="lg">
                   Request Access
@@ -64,9 +64,9 @@ export function CTASection() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mt-10 rounded-xl border border-sage/30 bg-sage/10 p-8"
+              className="mt-10 rounded-xl border border-signal/30 bg-signal/10 p-8 glow-signal"
             >
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-sage/20 text-sage">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-signal/20 text-signal animate-signal-pulse">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>

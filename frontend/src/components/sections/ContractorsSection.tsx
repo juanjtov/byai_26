@@ -30,7 +30,7 @@ const contractLineItems = [
 
 export function ContractorsSection() {
   return (
-    <section id="contractors" className="bg-charcoal-light py-32">
+    <section id="contractors" className="bg-tungsten py-32">
       <Container>
         <div className="grid items-center gap-16 lg:grid-cols-2">
           {/* Contract preview */}
@@ -52,55 +52,55 @@ export function ContractorsSection() {
               <div className="absolute inset-0 translate-x-1 translate-y-1 rotate-1 rounded-xl bg-ivory/10" />
 
               {/* Main contract */}
-              <div className="relative rounded-xl bg-ivory p-8 text-charcoal shadow-2xl">
+              <div className="relative rounded-xl bg-ivory p-8 text-obsidian shadow-2xl">
                 {/* Header */}
-                <div className="mb-6 flex items-center gap-4 border-b border-charcoal/10 pb-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-charcoal text-lg font-bold text-ivory">
+                <div className="mb-6 flex items-center gap-4 border-b border-obsidian/10 pb-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-obsidian text-lg font-bold text-ivory">
                     AB
                   </div>
                   <div>
                     <div className="font-medium">Alpha Builders</div>
-                    <div className="text-sm text-charcoal/50">Licensed & Insured</div>
+                    <div className="text-sm text-obsidian/50">Licensed & Insured</div>
                   </div>
                 </div>
 
                 {/* Project info */}
                 <div className="mb-6">
-                  <div className="text-sm text-charcoal/50">Project</div>
-                  <div className="font-display text-xl">Kitchen Remodel — Signature Package</div>
+                  <div className="text-sm text-obsidian/50">Project</div>
+                  <div className="font-display text-xl">Kitchen Remodel — Standard Package</div>
                 </div>
 
                 {/* Line items */}
                 <div className="mb-6 space-y-3">
                   {contractLineItems.map((item) => (
                     <div key={item.description} className="flex items-center justify-between text-sm">
-                      <span className="text-charcoal/70">{item.description}</span>
+                      <span className="text-obsidian/70">{item.description}</span>
                       <span className="font-medium">{item.amount}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Total */}
-                <div className="flex items-center justify-between border-t border-charcoal/10 pt-4">
+                <div className="flex items-center justify-between border-t border-obsidian/10 pt-4">
                   <span className="font-medium">Total</span>
-                  <span className="font-display text-2xl">$24,500</span>
+                  <span className="font-display text-2xl text-obsidian" style={{ textShadow: '0 0 20px rgba(207, 255, 4, 0.4)' }}>$24,500</span>
                 </div>
 
                 {/* Timeline */}
-                <div className="mt-4 rounded-lg bg-charcoal/5 p-3 text-center text-sm">
-                  <span className="text-charcoal/50">Estimated Timeline:</span>{' '}
-                  <span className="font-medium">3-4 weeks</span>
+                <div className="mt-4 rounded-lg bg-signal/10 p-3 text-center text-sm border border-signal/20">
+                  <span className="text-obsidian/50">Estimated Timeline:</span>{' '}
+                  <span className="font-medium text-obsidian">3-4 weeks</span>
                 </div>
 
                 {/* Signature lines */}
                 <div className="mt-8 grid grid-cols-2 gap-8">
                   <div>
-                    <div className="h-px bg-charcoal/20" />
-                    <div className="mt-2 text-xs text-charcoal/40">Homeowner Signature</div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-signal/40 to-transparent" />
+                    <div className="mt-2 text-xs text-obsidian/40">Homeowner Signature</div>
                   </div>
                   <div>
-                    <div className="h-px bg-charcoal/20" />
-                    <div className="mt-2 text-xs text-charcoal/40">Date</div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-signal/40 to-transparent" />
+                    <div className="mt-2 text-xs text-obsidian/40">Date</div>
                   </div>
                 </div>
               </div>
@@ -128,7 +128,7 @@ export function ContractorsSection() {
                   className="group"
                 >
                   <div className="flex gap-4">
-                    <span className="font-display text-2xl text-amber/30 transition-colors group-hover:text-amber">
+                    <span className="font-display text-2xl text-copper/30 transition-all duration-300 group-hover:text-copper group-hover:text-glow-signal">
                       {String(index + 1).padStart(2, '0')}
                     </span>
                     <div>

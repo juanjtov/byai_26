@@ -25,7 +25,7 @@ export function SectionHeader({
       viewport={viewportConfig}
       className={`mb-16 ${alignmentClasses}`}
     >
-      <span className="mb-4 inline-block text-sm font-medium uppercase tracking-widest text-amber">
+      <span className="mb-4 inline-block text-sm font-medium uppercase tracking-widest text-copper">
         {eyebrow}
       </span>
       <h2 className="font-display text-4xl font-light leading-tight text-ivory md:text-5xl lg:text-6xl">

@@ -1,109 +1,90 @@
-import { motion } from 'framer-motion';
-import { Container, SectionHeader, Button } from '@/components/common';
-import { fadeInUp, viewportConfig } from '@/lib/animations';
+import { useRef, useEffect } from 'react';
 import { usePricing } from '@/hooks/usePricing';
-import { formatPrice } from '@/lib/pricing';
-import { PackageCard } from './PackageCard';
+import { useGsapAnimations } from '@/hooks/useGsapAnimations';
+import { getPackageName, PACKAGE_PRICES } from '@/lib/pricing';
 import { PriceSlider } from './PriceSlider';
-import { FeaturesList } from './FeaturesList';
+import { PhoneMockup } from './PhoneMockup';
 
 export function DemoSection() {
   const {
-    sliderValue,
-    setSliderValue,
+    step,
+    setStep,
     currentPackage,
-    packages,
     currentPrice,
-    selectPackage,
+    materials,
   } = usePricing();
 
-  const activePackage = packages.find((p) => p.name === currentPackage);
+  const { priceRef, animatePrice, triggerHapticShake, setImageZoom } = useGsapAnimations();
+  const phoneRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
+
+  const handleSliderChange = (newStep: number) => {
+    setStep(newStep);
+    // Get the target price directly from the new step
+    const targetPackage = getPackageName(newStep);
+    const targetPrice = PACKAGE_PRICES[targetPackage];
+    animatePrice(targetPrice);
+    triggerHapticShake(phoneRef.current);
+    setImageZoom(imageRef.current, newStep);
+  };
+
+  // Initialize price display on mount
+  useEffect(() => {
+    animatePrice(currentPrice);
+  }, []);
 
   return (
-    <section id="demo" className="bg-charcoal-light py-32">
-      <Container>
-        <SectionHeader
-          eyebrow="The Experience"
-          headline="Watch the price update in real time"
-          description="No more spreadsheets. No more going home to 'run the numbers.' Show homeowners exactly what they're getting—and what it costs—while you're still in the room."
-        />
+    <section id="demo" className="w-full py-20 bg-tungsten relative border-y border-white/5">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        {/* Left Column: Controls */}
+        <div>
+          <h2 className="text-4xl md:text-5xl font-light mb-6 text-ivory">
+            Scope Fluidity. <br />
+            <span className="text-copper">Price Certainty.</span>
+          </h2>
+          <p className="text-gray-400 font-light mb-12 max-w-md text-lg">
+            Drag the slider. Watch the scope evolve. The price updates instantly. No "let me calculate that and get back to you."
+          </p>
 
-        <motion.div
-          variants={fadeInUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportConfig}
-        >
-          {/* Demo card */}
-          <div className="overflow-hidden rounded-2xl border border-amber/20 bg-charcoal animate-pulse-glow">
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ivory/5 px-8 py-6">
-              <div>
-                <h3 className="font-display text-2xl text-ivory">Kitchen Remodel</h3>
-                <p className="mt-1 text-sm text-ivory/40">12' × 14' • L-Shape</p>
+          {/* Control Panel */}
+          <div className="bg-obsidian p-8 rounded-2xl border border-white/10 shadow-2xl">
+            <PriceSlider
+              step={step}
+              onChange={handleSliderChange}
+              currentPackage={currentPackage}
+            />
+
+            {/* 2x2 Materials Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-tungsten p-4 rounded border border-white/5">
+                <div className="text-[10px] font-mono text-gray-500 uppercase mb-1">Flooring</div>
+                <div className="text-sm text-white">{materials.flooring}</div>
               </div>
-              <span className="rounded-full bg-sage/20 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-sage">
-                Scanned
-              </span>
-            </div>
-
-            {/* Main content */}
-            <div className="p-8">
-              {/* Current price display */}
-              <div className="mb-8 text-center">
-                <span className="text-sm uppercase tracking-wider text-ivory/40">
-                  Estimated Total
-                </span>
-                <motion.div
-                  key={currentPrice}
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="mt-2 font-display text-5xl font-light text-amber md:text-6xl"
-                >
-                  {formatPrice(currentPrice)}
-                </motion.div>
-                <span className="mt-2 inline-block text-sm text-ivory/40">
-                  {currentPackage} Package
-                </span>
+              <div className="bg-tungsten p-4 rounded border border-white/5">
+                <div className="text-[10px] font-mono text-gray-500 uppercase mb-1">Cabinets</div>
+                <div className="text-sm text-white">{materials.cabinets}</div>
               </div>
-
-              {/* Slider */}
-              <div className="mx-auto max-w-2xl">
-                <PriceSlider value={sliderValue} onChange={setSliderValue} />
+              <div className="bg-tungsten p-4 rounded border border-white/5">
+                <div className="text-[10px] font-mono text-gray-500 uppercase mb-1">Countertops</div>
+                <div className="text-sm text-white">{materials.countertop}</div>
               </div>
-
-              {/* Package cards */}
-              <div className="mt-10 grid gap-4 md:grid-cols-3">
-                {packages.map((pkg) => (
-                  <PackageCard
-                    key={pkg.name}
-                    pkg={pkg}
-                    isActive={pkg.name === currentPackage}
-                    onClick={() => selectPackage(pkg.name)}
-                  />
-                ))}
-              </div>
-
-              {/* Features list */}
-              {activePackage && (
-                <div className="mt-8">
-                  <FeaturesList features={activePackage.features} />
-                </div>
-              )}
-
-              {/* CTA */}
-              <div className="mt-10 text-center">
-                <Button variant="primary" size="lg">
-                  Lock Scope & Generate Contract
-                </Button>
-                <p className="mt-4 text-sm text-ivory/30">
-                  Contract ready for signature in under 60 seconds
-                </p>
+              <div className="bg-tungsten p-4 rounded border border-white/5">
+                <div className="text-[10px] font-mono text-gray-500 uppercase mb-1">Timeline</div>
+                <div className="text-sm text-white">{materials.timeline}</div>
               </div>
             </div>
           </div>
-        </motion.div>
-      </Container>
+        </div>
+
+        {/* Right Column: Phone Mockup */}
+        <div className="relative flex justify-center lg:justify-end">
+          <PhoneMockup
+            ref={phoneRef}
+            priceRef={priceRef}
+            imageRef={imageRef}
+          />
+        </div>
+      </div>
     </section>
   );
 }

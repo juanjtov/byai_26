@@ -39,7 +39,7 @@ const processSteps = [
 
 export function ProblemSection() {
   return (
-    <section id="problem" className="bg-charcoal-light py-32">
+    <section id="problem" className="bg-tungsten py-32">
       <Container>
         <SectionHeader
           eyebrow="The Problem"
@@ -62,7 +62,7 @@ export function ProblemSection() {
                 className="group"
               >
                 <div className="flex gap-6">
-                  <span className="font-display text-3xl font-light text-amber/30 transition-colors group-hover:text-amber">
+                  <span className="font-display text-3xl font-light text-copper/30 transition-all duration-300 group-hover:text-copper group-hover:text-glow-signal">
                     {point.number}
                   </span>
                   <div>
@@ -83,7 +83,7 @@ export function ProblemSection() {
             whileInView="visible"
             viewport={viewportConfig}
           >
-            <div className="rounded-2xl border border-ivory/5 bg-charcoal p-8">
+            <div className="rounded-2xl border border-ivory/5 bg-obsidian p-8">
               <h4 className="mb-6 text-sm font-medium uppercase tracking-wider text-ivory/40">
                 Traditional Process
               </h4>

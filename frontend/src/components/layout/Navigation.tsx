@@ -11,11 +11,11 @@ const navLinks = [
 
 function Logo() {
   return (
-    <a href="#" className="flex items-center gap-3">
-      {/* Diamond icon */}
-      <div className="relative h-8 w-8">
-        <div className="absolute inset-0 rotate-45 border border-amber" />
-        <div className="absolute inset-2 rotate-45 border border-amber/50" />
+    <a href="#" className="flex items-center gap-3 group">
+      {/* Diamond icon with signal glow on hover */}
+      <div className="relative h-8 w-8 transition-all duration-300 group-hover:glow-signal">
+        <div className="absolute inset-0 rotate-45 border border-copper transition-colors group-hover:border-signal" />
+        <div className="absolute inset-2 rotate-45 border border-copper/50 transition-colors group-hover:border-signal/50" />
       </div>
       <span className="font-display text-xl tracking-widest text-ivory">REMODLY</span>
     </a>
@@ -31,7 +31,7 @@ export function Navigation() {
     <motion.header
       className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${
         isScrolled
-          ? 'bg-charcoal/80 backdrop-blur-lg'
+          ? 'bg-obsidian/80 backdrop-blur-lg'
           : 'bg-transparent'
       }`}
       initial={{ y: -100 }}
@@ -48,9 +48,11 @@ export function Navigation() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-amber"
+                className="group relative text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-ivory"
               >
                 {link.label}
+                {/* Signal green indicator dot on hover */}
+                <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-signal opacity-0 transition-opacity group-hover:opacity-100 glow-signal" />
               </a>
             ))}
             <Button variant="outline" size="sm">
@@ -100,9 +102,10 @@ export function Navigation() {
               <a
                 key={link.href}
                 href={link.href}
-                className="block py-3 text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-amber"
+                className="flex items-center gap-2 py-3 text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-ivory group"
                 onClick={() => setMobileMenuOpen(false)}
               >
+                <span className="h-1 w-1 rounded-full bg-signal opacity-0 transition-opacity group-hover:opacity-100 glow-signal" />
                 {link.label}
               </a>
             ))}

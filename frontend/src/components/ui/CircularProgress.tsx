@@ -25,8 +25,8 @@ export function CircularProgress({
       >
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#c9a54d" />
-            <stop offset="100%" stopColor="#8a9a8d" />
+            <stop offset="0%" stopColor="#C88D74" />
+            <stop offset="100%" stopColor="#CFFF04" />
           </linearGradient>
         </defs>
         {/* Background circle */}
@@ -57,7 +57,7 @@ export function CircularProgress({
       {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span
-          className="font-display text-5xl font-light text-ivory"
+          className="font-display text-5xl font-light text-signal text-glow-signal"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}

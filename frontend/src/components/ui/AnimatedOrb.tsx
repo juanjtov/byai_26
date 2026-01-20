@@ -1,17 +1,17 @@
 interface AnimatedOrbProps {
-  color: 'amber' | 'sage';
+  color: 'copper' | 'sage';
   size?: number;
   className?: string;
 }
 
 export function AnimatedOrb({ color, size = 400, className = '' }: AnimatedOrbProps) {
   const colors = {
-    amber: 'bg-amber/20',
+    copper: 'bg-copper/20',
     sage: 'bg-sage/15',
   };
 
   const animations = {
-    amber: 'animate-float-1',
+    copper: 'animate-float-1',
     sage: 'animate-float-2',
   };
 

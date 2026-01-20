@@ -6,7 +6,7 @@ interface FeaturesListProps {
 
 export function FeaturesList({ features }: FeaturesListProps) {
   return (
-    <div className="rounded-xl border border-ivory/5 bg-charcoal p-6">
+    <div className="rounded-xl border border-ivory/5 bg-obsidian p-6">
       <h4 className="mb-4 text-sm font-medium uppercase tracking-wider text-ivory/40">
         Included Features
       </h4>

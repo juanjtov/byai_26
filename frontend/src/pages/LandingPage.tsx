@@ -12,7 +12,7 @@ import {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-charcoal">
+    <div className="min-h-screen bg-obsidian">
       <NoiseOverlay />
       <Navigation />
       <main>

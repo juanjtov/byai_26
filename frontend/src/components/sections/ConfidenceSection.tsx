@@ -13,7 +13,7 @@ const checklistItems = [
 
 export function ConfidenceSection() {
   return (
-    <section id="confidence" className="bg-charcoal py-32">
+    <section id="confidence" className="bg-obsidian py-32">
       <Container>
         <div className="grid items-center gap-16 lg:grid-cols-2">
           {/* Content */}
@@ -40,14 +40,14 @@ export function ConfidenceSection() {
                   transition={{ delay: index * 0.1 }}
                   className={`flex items-start gap-4 rounded-lg border p-4 ${
                     item.completed
-                      ? 'border-sage/20 bg-sage/5'
-                      : 'border-amber/30 bg-amber/5'
+                      ? 'border-signal/20 bg-signal/5'
+                      : 'border-copper/30 bg-copper/5'
                   }`}
                 >
                   {/* Icon */}
                   <div
                     className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${
-                      item.completed ? 'bg-sage/20 text-sage' : 'bg-amber/20 text-amber'
+                      item.completed ? 'bg-signal/20 text-signal' : 'bg-copper/20 text-copper'
                     }`}
                   >
                     {item.completed ? (
@@ -62,11 +62,11 @@ export function ConfidenceSection() {
                   </div>
                   {/* Text */}
                   <div className="flex-1">
-                    <span className={item.completed ? 'text-ivory' : 'text-amber'}>
+                    <span className={item.completed ? 'text-ivory' : 'text-copper'}>
                       {item.label}
                     </span>
                     {item.warning && (
-                      <p className="mt-1 text-sm text-amber/70">{item.warning}</p>
+                      <p className="mt-1 text-sm text-copper/70">{item.warning}</p>
                     )}
                   </div>
                 </motion.div>

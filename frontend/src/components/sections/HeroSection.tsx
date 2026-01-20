@@ -11,11 +11,11 @@ const stats = [
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-charcoal pt-20">
+    <section className="relative min-h-screen overflow-hidden bg-obsidian pt-20">
       {/* Background elements */}
       <GridBackground />
       <AnimatedOrb
-        color="amber"
+        color="copper"
         size={500}
         className="right-[-10%] top-[10%]"
       />
@@ -24,6 +24,17 @@ export function HeroSection() {
         size={400}
         className="bottom-[10%] left-[-5%]"
       />
+
+      {/* LiDAR Scanning Line - Subtle Copper */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-[5]">
+        <div
+          className="absolute left-0 right-0 h-[2px] animate-lidar-scan"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #C88D74, transparent)',
+            boxShadow: '0 0 20px 4px rgba(200,141,116,0.4)'
+          }}
+        />
+      </div>
 
       <Container className="relative z-10 flex min-h-[calc(100vh-5rem)] flex-col justify-center py-20">
         <motion.div
@@ -34,8 +45,8 @@ export function HeroSection() {
         >
           {/* Eyebrow */}
           <motion.div variants={fadeInUp} className="mb-8 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-amber animate-pulse-dot" />
-            <span className="text-sm uppercase tracking-widest text-ivory/60">
+            <span className="h-2 w-2 rounded-full bg-gold animate-gold-pulse" />
+            <span className="text-sm uppercase tracking-widest text-body">
               Now in Private Beta
             </span>
           </motion.div>
@@ -55,7 +66,7 @@ export function HeroSection() {
           {/* Subheadline */}
           <motion.p
             variants={fadeInUp}
-            className="mt-8 max-w-2xl text-lg leading-relaxed text-ivory/60 md:text-xl"
+            className="mt-8 max-w-2xl text-lg leading-relaxed text-body md:text-xl"
           >
             The AI-powered estimator that turns your LiDAR scan into instant,
             accurate pricing—and a signed contract before you leave the room.
@@ -80,11 +91,11 @@ export function HeroSection() {
             className="mt-20 grid grid-cols-3 gap-8 border-t border-ivory/10 pt-10"
           >
             {stats.map((stat) => (
-              <div key={stat.label}>
-                <div className="font-display text-3xl font-light text-amber md:text-4xl">
+              <div key={stat.label} className="group cursor-default">
+                <div className="font-display text-3xl font-light text-copper md:text-4xl transition-all duration-300 group-hover:glow-sage">
                   {stat.value}
                 </div>
-                <div className="mt-2 text-xs uppercase tracking-wider text-ivory/40">
+                <div className="mt-2 text-xs uppercase tracking-wider text-body">
                   {stat.label}
                 </div>
               </div>
@@ -101,11 +112,11 @@ export function HeroSection() {
         transition={{ delay: 1.5, duration: 0.5 }}
       >
         <motion.div
-          className="h-14 w-8 rounded-full border border-ivory/20 p-2"
+          className="h-14 w-8 rounded-full border border-gold/30 p-2"
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          <div className="h-2 w-1 mx-auto rounded-full bg-amber" />
+          <div className="h-2 w-1 mx-auto rounded-full bg-gold glow-gold" />
         </motion.div>
       </motion.div>
     </section>
