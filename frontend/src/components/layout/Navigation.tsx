@@ -30,7 +30,7 @@ export function Navigation() {
   return (
     <motion.header
       className={`fixed left-0 right-0 top-0 z-40 transition-all duration-300 ${
-        isScrolled
+        isScrolled || mobileMenuOpen
           ? 'bg-obsidian/80 backdrop-blur-lg'
           : 'bg-transparent'
       }`}
