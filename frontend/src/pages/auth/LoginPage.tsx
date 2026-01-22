@@ -28,7 +28,17 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-obsidian flex items-center justify-center py-12 px-4">
-      <Container className="max-w-md w-full">
+      <Container className="relative max-w-md w-full">
+        {/* Close button */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute right-4 top-4 text-ivory/40 hover:text-ivory transition-colors"
+          aria-label="Close"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 group mb-8">
             <div className="relative h-8 w-8 transition-all duration-300 group-hover:glow-signal">

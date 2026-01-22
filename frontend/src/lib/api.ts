@@ -129,3 +129,12 @@ export const documentApi = {
       token,
     }),
 };
+
+// Waitlist endpoints (public, no auth required)
+export const waitlistApi = {
+  join: (email: string, source: string = 'landing_page') =>
+    api<{ id: string; email: string; message: string }>('/api/v1/waitlist', {
+      method: 'POST',
+      body: { email, source },
+    }),
+};

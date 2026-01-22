@@ -2,16 +2,34 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Container, Button } from '@/components/common';
 import { fadeInUp, viewportConfig } from '@/lib/animations';
+import { waitlistApi } from '@/lib/api';
 
 export function CTASection() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email) return;
+
+    setError('');
+    setLoading(true);
+
+    try {
+      await waitlistApi.join(email, 'cta_section');
       setSubmitted(true);
-      // In production, this would submit to an API
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to join waitlist';
+      // If already on waitlist, show success anyway
+      if (message.includes('already on the waitlist')) {
+        setSubmitted(true);
+      } else {
+        setError(message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,6 +61,11 @@ export function CTASection() {
           {/* Form */}
           {!submitted ? (
             <form onSubmit={handleSubmit} className="mt-10">
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
               <div className="flex flex-col gap-4 sm:flex-row">
                 <input
                   type="email"
@@ -50,10 +73,11 @@ export function CTASection() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="flex-1 rounded-none border border-ivory/10 bg-tungsten px-6 py-4 text-ivory placeholder-ivory/30 transition-all duration-300 focus:border-signal focus:outline-none focus:shadow-[0_0_20px_rgba(207,255,4,0.3)]"
+                  disabled={loading}
+                  className="flex-1 rounded-none border border-ivory/10 bg-tungsten px-6 py-4 text-ivory placeholder-ivory/30 transition-all duration-300 focus:border-signal focus:outline-none focus:shadow-[0_0_20px_rgba(207,255,4,0.3)] disabled:opacity-50"
                 />
-                <Button type="submit" variant="primary" size="lg">
-                  Request Access
+                <Button type="submit" variant="primary" size="lg" disabled={loading}>
+                  {loading ? 'Joining...' : 'Request Access'}
                 </Button>
               </div>
               <p className="mt-4 text-sm text-ivory/30">
