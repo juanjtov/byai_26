@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { organizationApi } from '@/lib/api';
-import { DashboardLayout } from '@/components/dashboard';
+import { DashboardLayout, OrganizationSetup } from '@/components/dashboard';
 
 interface CompanyProfile {
   id: string;
@@ -35,9 +35,17 @@ export function ProfilePage() {
   });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!organization?.id || !accessToken) return;
+    if (!accessToken) return;
 
+    // Exit loading if organization is explicitly null
+    if (organization === null) {
+      setLoading(false);
+      return;
+    }
+
+    if (!organization?.id) return;
+
+    const fetchProfile = async () => {
       try {
         const data = await organizationApi.getProfile(organization.id, accessToken) as CompanyProfile;
         setProfile(data);
@@ -59,7 +67,7 @@ export function ProfilePage() {
     };
 
     fetchProfile();
-  }, [organization?.id, accessToken]);
+  }, [organization, accessToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +78,15 @@ export function ProfilePage() {
     setSaving(true);
 
     try {
-      await organizationApi.updateProfile(organization.id, formData, accessToken);
+      // Auto-prepend https:// to website if missing protocol
+      const dataToSave = {
+        ...formData,
+        website: formData.website && !formData.website.match(/^https?:\/\//)
+          ? `https://${formData.website}`
+          : formData.website,
+      };
+
+      await organizationApi.updateProfile(organization.id, dataToSave, accessToken);
       setSuccess('Profile updated successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
@@ -95,6 +111,10 @@ export function ProfilePage() {
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (!organization) {
+    return <OrganizationSetup />;
   }
 
   return (
@@ -206,11 +226,11 @@ export function ProfilePage() {
                 <input
                   id="website"
                   name="website"
-                  type="url"
+                  type="text"
                   value={formData.website}
                   onChange={handleChange}
                   className="w-full px-4 py-3 bg-ivory/5 border border-ivory/10 rounded-lg text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-copper transition-colors"
-                  placeholder="https://yourcompany.com"
+                  placeholder="yourcompany.com"
                 />
               </div>
             </div>

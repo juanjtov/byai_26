@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { organizationApi } from '@/lib/api';
-import { DashboardLayout } from '@/components/dashboard';
+import { DashboardLayout, OrganizationSetup } from '@/components/dashboard';
 
 interface PricingProfile {
   id: string;
@@ -59,10 +59,6 @@ export function PricingPage() {
     category: 'General Labor',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, [organization?.id, accessToken]);
-
   const fetchData = async () => {
     if (!organization?.id || !accessToken) return;
 
@@ -88,6 +84,20 @@ export function PricingPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    // Exit loading if organization is explicitly null
+    if (organization === null) {
+      setLoading(false);
+      return;
+    }
+
+    if (!organization?.id) return;
+
+    fetchData();
+  }, [organization, accessToken]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +170,10 @@ export function PricingPage() {
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (!organization) {
+    return <OrganizationSetup />;
   }
 
   return (

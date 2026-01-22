@@ -84,7 +84,7 @@ def get_jwks_client() -> JWKSClient:
         settings = get_settings()
         # Extract project ref from URL: https://xxx.supabase.co -> xxx
         project_ref = settings.supabase_url.replace("https://", "").replace(".supabase.co", "")
-        jwks_url = f"https://{project_ref}.supabase.co/.well-known/jwks.json"
+        jwks_url = f"https://{project_ref}.supabase.co/auth/v1/.well-known/jwks.json"
         _jwks_client = JWKSClient(jwks_url)
     return _jwks_client
 
@@ -96,7 +96,7 @@ def verify_supabase_jwt(token: str) -> dict:
     This function:
     1. Extracts the key ID (kid) from the token header
     2. Fetches the corresponding public key from the JWKS endpoint
-    3. Verifies the token signature using RS256
+    3. Verifies the token signature using RS256 or ES256
     4. Returns the decoded payload
 
     Args:
@@ -129,7 +129,7 @@ def verify_supabase_jwt(token: str) -> dict:
         payload = jwt.decode(
             token,
             key_data,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             audience="authenticated"
         )
 

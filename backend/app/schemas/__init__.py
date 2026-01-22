@@ -1,7 +1,6 @@
 from app.schemas.auth import (
-    SignupRequest,
-    LoginRequest,
-    AuthResponse,
+    UserInfo,
+    OrganizationInfo,
     UserResponse,
 )
 from app.schemas.organization import (
@@ -21,9 +20,8 @@ from app.schemas.document import (
 )
 
 __all__ = [
-    "SignupRequest",
-    "LoginRequest",
-    "AuthResponse",
+    "UserInfo",
+    "OrganizationInfo",
     "UserResponse",
     "CompanyProfileResponse",
     "CompanyProfileUpdate",

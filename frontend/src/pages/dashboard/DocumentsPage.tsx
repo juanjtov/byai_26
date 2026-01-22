@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentApi } from '@/lib/api';
-import { DashboardLayout } from '@/components/dashboard';
+import { DashboardLayout, OrganizationSetup } from '@/components/dashboard';
 
 interface Document {
   id: string;
@@ -29,10 +29,6 @@ export function DocumentsPage() {
   const [selectedType, setSelectedType] = useState('contract');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [organization?.id, accessToken]);
-
   const fetchDocuments = async () => {
     if (!organization?.id || !accessToken) return;
 
@@ -45,6 +41,20 @@ export function DocumentsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    // Exit loading if organization is explicitly null
+    if (organization === null) {
+      setLoading(false);
+      return;
+    }
+
+    if (!organization?.id) return;
+
+    fetchDocuments();
+  }, [organization, accessToken]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -146,6 +156,10 @@ export function DocumentsPage() {
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (!organization) {
+    return <OrganizationSetup />;
   }
 
   return (
