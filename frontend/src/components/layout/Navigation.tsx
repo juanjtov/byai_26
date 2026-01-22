@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { Button, Container } from '@/components/common';
 
@@ -11,14 +12,14 @@ const navLinks = [
 
 function Logo() {
   return (
-    <a href="#" className="flex items-center gap-3 group">
+    <Link to="/" className="flex items-center gap-3 group">
       {/* Diamond icon with signal glow on hover */}
       <div className="relative h-8 w-8 transition-all duration-300 group-hover:glow-signal">
         <div className="absolute inset-0 rotate-45 border border-copper transition-colors group-hover:border-signal" />
         <div className="absolute inset-2 rotate-45 border border-copper/50 transition-colors group-hover:border-signal/50" />
       </div>
       <span className="font-display text-xl tracking-widest text-ivory">REMODLY</span>
-    </a>
+    </Link>
   );
 }
 
@@ -55,9 +56,14 @@ export function Navigation() {
                 <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-signal opacity-0 transition-opacity group-hover:opacity-100 glow-signal" />
               </a>
             ))}
-            <Button variant="outline" size="sm">
-              Join Waitlist
-            </Button>
+            <Link to="/login" className="text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-ivory">
+              Sign In
+            </Link>
+            <Link to="/signup">
+              <Button variant="outline" size="sm">
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -109,10 +115,20 @@ export function Navigation() {
                 {link.label}
               </a>
             ))}
+            <Link
+              to="/login"
+              className="flex items-center gap-2 py-3 text-sm uppercase tracking-wider text-ivory/60 transition-colors hover:text-ivory group"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span className="h-1 w-1 rounded-full bg-signal opacity-0 transition-opacity group-hover:opacity-100 glow-signal" />
+              Sign In
+            </Link>
             <div className="mt-4">
-              <Button variant="outline" size="sm" className="w-full">
-                Join Waitlist
-              </Button>
+              <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="outline" size="sm" className="w-full">
+                  Get Started
+                </Button>
+              </Link>
             </div>
           </motion.div>
         )}

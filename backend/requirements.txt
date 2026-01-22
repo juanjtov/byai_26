@@ -1,0 +1,24 @@
+# FastAPI and server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+
+# Supabase
+supabase==2.10.0
+
+# OpenAI for document extraction
+openai==1.58.1
+
+# Validation and settings
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# HTTP client
+httpx==0.28.1
+
+# PDF processing
+pypdf==5.1.0
+
+# Utilities
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
