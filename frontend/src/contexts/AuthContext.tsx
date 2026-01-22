@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { authApi } from '@/lib/api';
 
 interface User {
@@ -33,6 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Skip auth setup if Supabase isn't configured
+    if (!isSupabaseConfigured || !supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Check for existing session
     const checkSession = async () => {
       try {
@@ -89,6 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
+    }
+
     const response = await authApi.login(email, password) as {
       user: User;
       organization: Organization | null;
@@ -107,6 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string, organizationName: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
+    }
+
     const response = await authApi.signup(email, password, organizationName) as {
       user: User;
       organization: Organization | null;
@@ -134,7 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setOrganization(null);
     setAccessToken(null);
