@@ -37,7 +37,7 @@ const categories = [
 
 export function PricingPage() {
   const { organization, accessToken } = useAuth();
-  const [profile, setProfile] = useState<PricingProfile | null>(null);
+  const [, setProfile] = useState<PricingProfile | null>(null);
   const [laborItems, setLaborItems] = useState<LaborItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

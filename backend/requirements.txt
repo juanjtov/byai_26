@@ -22,3 +22,5 @@ pypdf==5.1.0
 # Utilities
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+psycopg2-binary==2.9.9

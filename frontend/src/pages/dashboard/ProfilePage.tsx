@@ -17,7 +17,7 @@ interface CompanyProfile {
 
 export function ProfilePage() {
   const { organization, accessToken } = useAuth();
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  const [, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

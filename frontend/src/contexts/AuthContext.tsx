@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { authApi } from '@/lib/api';
 
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for existing session
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase!.auth.getSession();
 
         if (session?.access_token) {
           setAccessToken(session.access_token);
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null);
