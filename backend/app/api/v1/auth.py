@@ -1,95 +1,75 @@
-from fastapi import APIRouter, HTTPException, Header
-from typing import Optional
+"""
+Authentication endpoints.
 
-from app.services.auth import AuthService
-from app.schemas.auth import SignupRequest, LoginRequest, AuthResponse, UserResponse
+Auth is now handled by Supabase directly on the frontend.
+Backend only verifies JWTs and handles organization initialization.
+"""
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+
+from app.dependencies import get_current_user_id
+from app.services.organization_init import OrganizationInitService
+from app.schemas.auth import OrganizationInfo, UserInfo, UserResponse
 
 router = APIRouter()
-auth_service = AuthService()
+org_init_service = OrganizationInitService()
 
 
-@router.post("/signup", response_model=AuthResponse)
-async def signup(request: SignupRequest):
+class InitializeOrganizationRequest(BaseModel):
+    """Request body for organization initialization."""
+    organization_name: str
+
+
+class InitializeOrganizationResponse(BaseModel):
+    """Response for organization initialization."""
+    organization: OrganizationInfo
+    is_new: bool
+
+
+@router.post("/initialize-organization", response_model=InitializeOrganizationResponse)
+async def initialize_organization(
+    request: InitializeOrganizationRequest,
+    user_id: str = Depends(get_current_user_id),
+):
     """
-    Register a new user and create their organization.
+    Initialize organization for a newly signed-up user.
+
+    Called by frontend after Supabase signup completes.
+    - If user already has an org, returns existing org
+    - If user has no org, creates one with company/pricing profiles
+
+    Requires valid Supabase JWT in Authorization header.
     """
     try:
-        result = await auth_service.signup(
-            email=request.email,
-            password=request.password,
+        result = await org_init_service.initialize_for_user(
+            user_id=user_id,
             org_name=request.organization_name,
         )
-
-        return AuthResponse(
-            user={"id": result["user"]["id"], "email": result["user"]["email"]},
-            organization={
-                "id": result["organization"]["id"],
-                "name": result["organization"]["name"],
-                "slug": result["organization"]["slug"],
-                "role": "owner",
-            },
-            session={
-                "access_token": result["session"].access_token,
-                "refresh_token": result["session"].refresh_token,
-                "expires_at": result["session"].expires_at,
-            } if result["session"] else None,
+        return InitializeOrganizationResponse(
+            organization=OrganizationInfo(**result["organization"]),
+            is_new=result["is_new"],
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
-
-
-@router.post("/login", response_model=AuthResponse)
-async def login(request: LoginRequest):
-    """
-    Log in a user with email and password.
-    """
-    try:
-        result = await auth_service.login(
-            email=request.email,
-            password=request.password,
-        )
-
-        return AuthResponse(
-            user=result["user"],
-            organization=result["organization"],
-            session=result["session"],
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to initialize organization: {str(e)}")
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(authorization: Optional[str] = Header(None)):
+async def get_current_user(user_id: str = Depends(get_current_user_id)):
     """
-    Get the current authenticated user.
+    Get the current authenticated user and their organization.
+
+    JWT is verified via JWKS (no Supabase API call for auth).
+    Organization data is fetched from database.
     """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+    # Get user's organization
+    org = await org_init_service.get_user_organization(user_id)
 
-    access_token = authorization.replace("Bearer ", "")
-
-    result = await auth_service.get_current_user(access_token)
-
-    if result is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
+    # We don't have email in JWT claims reliably, so we return empty string
+    # Frontend already has the email from Supabase session
     return UserResponse(
-        user=result["user"],
-        organization=result["organization"],
+        user=UserInfo(id=user_id, email=""),
+        organization=OrganizationInfo(**org) if org else None,
     )
-
-
-@router.post("/logout")
-async def logout(authorization: Optional[str] = Header(None)):
-    """
-    Log out the current user.
-    """
-    if authorization and authorization.startswith("Bearer "):
-        access_token = authorization.replace("Bearer ", "")
-        await auth_service.logout(access_token)
-
-    return {"message": "Logged out successfully"}

@@ -4,7 +4,7 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.18
 
 # Supabase
-supabase==2.10.0
+supabase
 
 # OpenAI for document extraction
 openai==1.58.1
@@ -14,7 +14,7 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 
 # HTTP client
-httpx==0.28.1
+httpx==0.28
 
 # PDF processing
 pypdf==5.1.0
