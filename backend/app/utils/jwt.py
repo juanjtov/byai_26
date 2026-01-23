@@ -5,6 +5,7 @@ This module verifies Supabase JWTs using the public keys from the JWKS endpoint,
 supporting automatic key rotation without needing a shared secret.
 """
 
+import asyncio
 import time
 from typing import Optional
 
@@ -83,7 +84,9 @@ def get_jwks_client() -> JWKSClient:
     if _jwks_client is None:
         settings = get_settings()
         # Extract project ref from URL: https://xxx.supabase.co -> xxx
-        project_ref = settings.supabase_url.replace("https://", "").replace(".supabase.co", "")
+        # Strip trailing slash first to handle URLs like "https://xxx.supabase.co/"
+        base_url = settings.supabase_url.rstrip("/")
+        project_ref = base_url.replace("https://", "").replace(".supabase.co", "")
         jwks_url = f"https://{project_ref}.supabase.co/auth/v1/.well-known/jwks.json"
         _jwks_client = JWKSClient(jwks_url)
     return _jwks_client
@@ -141,6 +144,25 @@ def verify_supabase_jwt(token: str) -> dict:
         raise JWTVerificationError(f"Key error: {str(e)}")
     except httpx.HTTPError as e:
         raise JWTVerificationError(f"Failed to fetch JWKS: {str(e)}")
+
+
+async def verify_supabase_jwt_async(token: str) -> dict:
+    """
+    Async version of verify_supabase_jwt that runs in a thread pool.
+
+    This prevents blocking the FastAPI event loop during JWKS fetches.
+    Use this version in async contexts (route handlers, dependencies).
+
+    Args:
+        token: The JWT access token from Supabase
+
+    Returns:
+        The decoded JWT payload
+
+    Raises:
+        JWTVerificationError: If token is invalid, expired, or verification fails
+    """
+    return await asyncio.to_thread(verify_supabase_jwt, token)
 
 
 def extract_user_id(token: str) -> str:

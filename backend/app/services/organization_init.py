@@ -30,7 +30,31 @@ class OrganizationInitService:
         slug = name.lower()
         slug = re.sub(r"[^a-z0-9\s-]", "", slug)
         slug = re.sub(r"[\s]+", "-", slug)
+        slug = slug.strip("-")
         return slug
+
+    def _generate_unique_slug(self, name: str) -> str:
+        """
+        Generate unique URL-friendly slug, appending counter if collision exists.
+
+        Args:
+            name: The organization name
+
+        Returns:
+            A unique lowercase, hyphenated slug
+        """
+        base_slug = self._generate_slug(name)
+        if not base_slug:
+            base_slug = "organization"
+        slug = base_slug
+        counter = 1
+
+        while True:
+            existing = self.admin.table("organizations").select("id").eq("slug", slug).execute()
+            if not existing.data:
+                return slug
+            counter += 1
+            slug = f"{base_slug}-{counter}"
 
     async def initialize_for_user(
         self,
@@ -74,8 +98,8 @@ class OrganizationInitService:
                 "is_new": False,
             }
 
-        # Create new organization
-        org_slug = self._generate_slug(org_name)
+        # Create new organization with unique slug
+        org_slug = self._generate_unique_slug(org_name)
 
         org_response = self.admin.table("organizations").insert({
             "name": org_name,
@@ -87,22 +111,27 @@ class OrganizationInitService:
 
         org_id = org_response.data[0]["id"]
 
-        # Add user as organization owner
-        self.admin.table("organization_members").insert({
-            "organization_id": org_id,
-            "user_id": user_id,
-            "role": "owner",
-        }).execute()
+        try:
+            # Add user as organization owner
+            self.admin.table("organization_members").insert({
+                "organization_id": org_id,
+                "user_id": user_id,
+                "role": "owner",
+            }).execute()
 
-        # Create empty company profile
-        self.admin.table("company_profiles").insert({
-            "organization_id": org_id,
-        }).execute()
+            # Create empty company profile
+            self.admin.table("company_profiles").insert({
+                "organization_id": org_id,
+            }).execute()
 
-        # Create empty pricing profile
-        self.admin.table("pricing_profiles").insert({
-            "organization_id": org_id,
-        }).execute()
+            # Create empty pricing profile
+            self.admin.table("pricing_profiles").insert({
+                "organization_id": org_id,
+            }).execute()
+        except Exception as e:
+            # Cleanup: delete the organization if subsequent inserts fail
+            self.admin.table("organizations").delete().eq("id", org_id).execute()
+            raise ValueError(f"Failed to initialize organization: {str(e)}")
 
         return {
             "organization": {

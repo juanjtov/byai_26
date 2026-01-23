@@ -5,8 +5,10 @@ Auth is now handled by Supabase directly on the frontend.
 Backend only verifies JWTs and handles organization initialization.
 """
 
+import re
+
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.dependencies import get_current_user_id
 from app.services.organization_init import OrganizationInitService
@@ -19,6 +21,19 @@ org_init_service = OrganizationInitService()
 class InitializeOrganizationRequest(BaseModel):
     """Request body for organization initialization."""
     organization_name: str
+
+    @field_validator('organization_name')
+    @classmethod
+    def validate_organization_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError('Organization name cannot be empty')
+        # Check if name produces valid slug (has at least one alphanumeric char)
+        slug = re.sub(r"[^a-z0-9\s-]", "", v.lower())
+        slug = re.sub(r"[\s]+", "-", slug).strip("-")
+        if not slug:
+            raise ValueError('Organization name must contain at least one letter or number')
+        return v
 
 
 class InitializeOrganizationResponse(BaseModel):

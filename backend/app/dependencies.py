@@ -7,7 +7,7 @@ Uses JWKS-based JWT verification - no shared secrets needed.
 from fastapi import Header, HTTPException
 from typing import Optional
 
-from app.utils.jwt import verify_supabase_jwt, JWTVerificationError
+from app.utils.jwt import verify_supabase_jwt_async, JWTVerificationError
 from app.services.supabase import get_supabase_secret_client
 
 
@@ -50,7 +50,7 @@ async def get_current_user_id(authorization: Optional[str] = Header(None)) -> st
     token = extract_bearer_token(authorization)
 
     try:
-        payload = verify_supabase_jwt(token)
+        payload = await verify_supabase_jwt_async(token)
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(
