@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from decimal import Decimal
 
 
 class CompanyProfileResponse(BaseModel):
@@ -33,34 +32,34 @@ class CompanyProfileUpdate(BaseModel):
 class PricingProfileResponse(BaseModel):
     id: str
     organization_id: str
-    labor_rate_per_hour: Optional[Decimal] = None
-    overhead_markup: Optional[Decimal] = None
-    profit_margin: Optional[Decimal] = None
-    minimum_charge: Optional[Decimal] = None
+    labor_rate_per_hour: Optional[float] = None
+    overhead_markup: Optional[float] = None
+    profit_margin: Optional[float] = None
+    minimum_charge: Optional[float] = None
     region: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
 
 class PricingProfileUpdate(BaseModel):
-    labor_rate_per_hour: Optional[Decimal] = None
-    overhead_markup: Optional[Decimal] = None
-    profit_margin: Optional[Decimal] = None
-    minimum_charge: Optional[Decimal] = None
+    labor_rate_per_hour: Optional[float] = None
+    overhead_markup: Optional[float] = None
+    profit_margin: Optional[float] = None
+    minimum_charge: Optional[float] = None
     region: Optional[str] = None
 
 
 class LaborItemCreate(BaseModel):
     name: str
     unit: str  # 'sqft', 'lf', 'each', 'hour'
-    rate: Decimal
+    rate: float
     category: Optional[str] = None  # 'demolition', 'plumbing', 'electrical', 'tile', etc.
 
 
 class LaborItemUpdate(BaseModel):
     name: Optional[str] = None
     unit: Optional[str] = None
-    rate: Optional[Decimal] = None
+    rate: Optional[float] = None
     category: Optional[str] = None
 
 
@@ -69,6 +68,6 @@ class LaborItemResponse(BaseModel):
     organization_id: str
     name: str
     unit: str
-    rate: Decimal
+    rate: float
     category: Optional[str] = None
     created_at: datetime

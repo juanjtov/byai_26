@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field, AliasChoices
 from functools import lru_cache
 
 
@@ -7,8 +8,12 @@ class Settings(BaseSettings):
 
     # Supabase
     supabase_url: str
-    supabase_anon_key: str
-    supabase_service_role_key: str
+    supabase_publishable_key: str = Field(
+        validation_alias=AliasChoices('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY')
+    )
+    supabase_secret_key: str = Field(
+        validation_alias=AliasChoices('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY')
+    )
 
     # OpenAI
     openai_api_key: str
@@ -18,8 +23,7 @@ class Settings(BaseSettings):
     debug: bool = True
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
-    # JWT
-    jwt_secret: str
+    # Note: JWT_SECRET removed - using JWKS for token verification
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -28,6 +32,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 @lru_cache

@@ -22,6 +22,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, organizationName: string) => Promise<void>;
   logout: () => Promise<void>;
+  setOrganization: (org: Organization | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch organization data from backend
+  const fetchOrganization = async (token: string): Promise<Organization | null> => {
+    try {
+      const response = await authApi.me(token) as {
+        user: User;
+        organization: Organization | null;
+      };
+      return response.organization;
+    } catch (error) {
+      console.error('Failed to fetch organization:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Skip auth setup if Supabase isn't configured
     if (!isSupabaseConfigured || !supabase) {
@@ -39,52 +54,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check for existing session
-    const checkSession = async () => {
+    // Check for existing session on load
+    const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase!.auth.getSession();
 
-        if (session?.access_token) {
+        if (session?.user && session.access_token) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+          });
           setAccessToken(session.access_token);
 
-          // Get user info from backend
-          const response = await authApi.me(session.access_token) as {
-            user: User;
-            organization: Organization | null;
-          };
-
-          setUser(response.user);
-          setOrganization(response.organization);
+          // Fetch org data from backend
+          const org = await fetchOrganization(session.access_token);
+          setOrganization(org);
         }
       } catch (error) {
-        console.error('Session check failed:', error);
+        console.error('Session initialization failed:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth state changes
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null);
           setOrganization(null);
           setAccessToken(null);
-        } else if (session?.access_token) {
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+          });
           setAccessToken(session.access_token);
 
-          try {
-            const response = await authApi.me(session.access_token) as {
-              user: User;
-              organization: Organization | null;
-            };
-            setUser(response.user);
-            setOrganization(response.organization);
-          } catch (error) {
-            console.error('Failed to get user info:', error);
-          }
+          // Fetch org data
+          const org = await fetchOrganization(session.access_token);
+          setOrganization(org);
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          // Update access token when refreshed
+          setAccessToken(session.access_token);
         }
       }
     );
@@ -99,21 +113,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
     }
 
-    const response = await authApi.login(email, password) as {
-      user: User;
-      organization: Organization | null;
-      session: { access_token: string; refresh_token: string };
-    };
-
-    // Set the session in Supabase client
-    await supabase.auth.setSession({
-      access_token: response.session.access_token,
-      refresh_token: response.session.refresh_token,
+    // Call Supabase directly
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    setUser(response.user);
-    setOrganization(response.organization);
-    setAccessToken(response.session.access_token);
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data.user || !data.session) {
+      throw new Error('Login failed - no user data returned');
+    }
+
+    // Set user immediately from Supabase response
+    setUser({
+      id: data.user.id,
+      email: data.user.email || '',
+    });
+    setAccessToken(data.session.access_token);
+
+    // Fetch organization from backend
+    const org = await fetchOrganization(data.session.access_token);
+    setOrganization(org);
   };
 
   const signup = async (email: string, password: string, organizationName: string) => {
@@ -121,33 +144,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
     }
 
-    const response = await authApi.signup(email, password, organizationName) as {
-      user: User;
-      organization: Organization | null;
-      session: { access_token: string; refresh_token: string } | null;
-    };
+    // Step 1: Create user in Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-    if (response.session) {
-      await supabase.auth.setSession({
-        access_token: response.session.access_token,
-        refresh_token: response.session.refresh_token,
-      });
+    if (error) {
+      throw new Error(error.message);
+    }
 
-      setUser(response.user);
-      setOrganization(response.organization);
-      setAccessToken(response.session.access_token);
+    if (!data.user) {
+      throw new Error('Signup failed - no user data returned');
+    }
+
+    // Check if email confirmation is required
+    if (!data.session) {
+      // Email confirmation required - user needs to verify email first
+      throw new Error('Please check your email to confirm your account before signing in.');
+    }
+
+    // Step 2: Set user state
+    setUser({
+      id: data.user.id,
+      email: data.user.email || '',
+    });
+    setAccessToken(data.session.access_token);
+
+    // Step 3: Initialize organization via backend
+    try {
+      const orgResponse = await authApi.initializeOrganization(
+        organizationName,
+        data.session.access_token
+      );
+      setOrganization(orgResponse.organization);
+    } catch (orgError) {
+      // Log error but don't fail signup - user can create org later
+      console.error('Failed to initialize organization:', orgError);
     }
   };
 
   const logout = async () => {
-    if (accessToken) {
-      try {
-        await authApi.logout(accessToken);
-      } catch (error) {
-        console.error('Logout API call failed:', error);
-      }
-    }
-
     if (supabase) {
       await supabase.auth.signOut();
     }
@@ -166,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         logout,
+        setOrganization,
       }}
     >
       {children}

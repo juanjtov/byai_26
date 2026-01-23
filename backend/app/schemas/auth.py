@@ -1,25 +1,22 @@
-from pydantic import BaseModel, EmailStr
+"""
+Authentication schemas.
+
+Note: SignupRequest and LoginRequest have been removed.
+Auth is now handled directly by Supabase on the frontend.
+"""
+
+from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
-
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    organization_name: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
 
 
 class UserInfo(BaseModel):
+    """User information."""
     id: str
     email: str
 
 
 class OrganizationInfo(BaseModel):
+    """Organization information with user's role."""
     id: str
     name: str
     slug: str
@@ -27,18 +24,7 @@ class OrganizationInfo(BaseModel):
     logo_url: Optional[str] = None
 
 
-class SessionInfo(BaseModel):
-    access_token: str
-    refresh_token: str
-    expires_at: Optional[int] = None
-
-
-class AuthResponse(BaseModel):
-    user: UserInfo
-    organization: Optional[OrganizationInfo] = None
-    session: Optional[SessionInfo] = None
-
-
 class UserResponse(BaseModel):
+    """Response for /me endpoint."""
     user: UserInfo
     organization: Optional[OrganizationInfo] = None

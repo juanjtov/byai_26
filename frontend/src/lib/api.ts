@@ -32,24 +32,22 @@ export async function api<T>(endpoint: string, options: ApiOptions = {}): Promis
 }
 
 // Auth endpoints
+// Note: signup/login/logout are now handled by Supabase directly
 export const authApi = {
-  signup: (email: string, password: string, organizationName: string) =>
-    api('/api/v1/auth/signup', {
-      method: 'POST',
-      body: { email, password, organization_name: organizationName },
-    }),
-
-  login: (email: string, password: string) =>
-    api('/api/v1/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    }),
-
+  // Get current user and their organization
   me: (token: string) =>
     api('/api/v1/auth/me', { token }),
 
-  logout: (token: string) =>
-    api('/api/v1/auth/logout', { method: 'POST', token }),
+  // Initialize organization after Supabase signup
+  initializeOrganization: (organizationName: string, token: string) =>
+    api<{ organization: { id: string; name: string; slug: string; role: string }; is_new: boolean }>(
+      '/api/v1/auth/initialize-organization',
+      {
+        method: 'POST',
+        body: { organization_name: organizationName },
+        token,
+      }
+    ),
 };
 
 // Organization endpoints
