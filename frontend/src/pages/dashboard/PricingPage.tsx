@@ -48,9 +48,10 @@ const categories = [
 ];
 
 // AI Readiness Ring Component
-function AIReadinessRing({ processed, total }: { processed: number; total: number }) {
+function AIReadinessRing({ processed }: { processed: number; total: number }) {
   const minDocs = 3;
-  const percentage = Math.min(100, Math.round((processed / Math.max(total, minDocs)) * 100));
+  // Calculate readiness as progress toward the 3-document minimum threshold
+  const percentage = Math.min(100, Math.round((processed / minDocs) * 100));
 
   // Color based on percentage
   const getColor = () => {
@@ -108,7 +109,7 @@ function AIReadinessRing({ processed, total }: { processed: number; total: numbe
       <div className="mt-3 text-center">
         <div className={`text-sm font-medium ${color.text}`}>{getStatus()}</div>
         <div className="text-xs text-body mt-1">
-          Based on {processed} processed document{processed !== 1 ? 's' : ''}
+          {Math.min(processed, minDocs)}/{minDocs} documents for full readiness
         </div>
       </div>
     </div>

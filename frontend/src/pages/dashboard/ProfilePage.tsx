@@ -78,12 +78,13 @@ export function ProfilePage() {
     setSaving(true);
 
     try {
-      // Auto-prepend https:// to website if missing protocol
+      // Auto-prepend https:// to website if missing protocol, with whitespace trimming
+      const trimmedWebsite = formData.website.trim();
       const dataToSave = {
         ...formData,
-        website: formData.website && !formData.website.match(/^https?:\/\//)
-          ? `https://${formData.website}`
-          : formData.website,
+        website: trimmedWebsite && !trimmedWebsite.match(/^https?:\/\//)
+          ? `https://${trimmedWebsite}`
+          : trimmedWebsite || null,
       };
 
       await organizationApi.updateProfile(organization.id, dataToSave, accessToken);

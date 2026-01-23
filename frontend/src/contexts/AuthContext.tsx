@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for existing session on load
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase!.auth.getSession();
 
         if (session?.user && session.access_token) {
           setUser({
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null);
