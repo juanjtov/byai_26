@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: 'home' },
+  { label: 'AI Estimator', href: '/dashboard/chat', icon: 'chat' },
   { label: 'Company Profile', href: '/dashboard/profile', icon: 'building' },
   { label: 'Documents', href: '/dashboard/documents', icon: 'file' },
   { label: 'Pricing', href: '/dashboard/pricing', icon: 'dollar' },
