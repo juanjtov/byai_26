@@ -17,8 +17,10 @@ email-validator==2.1.0
 # HTTP client
 httpx==0.28
 
-# PDF processing
+# Document processing
 pypdf==5.1.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
 
 # Utilities
 python-jose[cryptography]==3.3.0

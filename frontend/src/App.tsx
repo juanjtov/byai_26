@@ -3,7 +3,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/dashboard';
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage, SignupPage } from '@/pages/auth';
-import { DashboardPage, ProfilePage, DocumentsPage, PricingPage } from '@/pages/dashboard';
+import { DashboardPage, ProfilePage, DocumentsPage, PricingPage, ChatPage } from '@/pages/dashboard';
 
 function App() {
   return (
@@ -45,6 +45,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <PricingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
               </ProtectedRoute>
             }
           />

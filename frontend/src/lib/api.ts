@@ -128,6 +128,62 @@ export const documentApi = {
     }),
 };
 
+// Chat types - re-exported from types/chat.ts
+export type { ChatMessage, Conversation, ConversationWithMessages } from '@/types/chat';
+import type { Conversation, ConversationWithMessages } from '@/types/chat';
+
+// Chat endpoints
+export const chatApi = {
+  // Create new conversation
+  createConversation: (orgId: string, title: string | null, token: string) =>
+    api<Conversation>(`/api/v1/organizations/${orgId}/chat/conversations`, {
+      method: 'POST',
+      body: { title },
+      token,
+    }),
+
+  // List conversations
+  listConversations: (orgId: string, savedOnly: boolean, token: string) =>
+    api<Conversation[]>(
+      `/api/v1/organizations/${orgId}/chat/conversations?saved_only=${savedOnly}`,
+      { token }
+    ),
+
+  // Get single conversation with messages
+  getConversation: (orgId: string, conversationId: string, token: string) =>
+    api<ConversationWithMessages>(
+      `/api/v1/organizations/${orgId}/chat/conversations/${conversationId}`,
+      { token }
+    ),
+
+  // Update conversation (save, rename)
+  updateConversation: (
+    orgId: string,
+    conversationId: string,
+    data: { title?: string; is_saved?: boolean },
+    token: string
+  ) =>
+    api<Conversation>(
+      `/api/v1/organizations/${orgId}/chat/conversations/${conversationId}`,
+      {
+        method: 'PATCH',
+        body: data,
+        token,
+      }
+    ),
+
+  // Delete conversation
+  deleteConversation: (orgId: string, conversationId: string, token: string) =>
+    api(`/api/v1/organizations/${orgId}/chat/conversations/${conversationId}`, {
+      method: 'DELETE',
+      token,
+    }),
+
+  // Get stream URL for SSE
+  getStreamUrl: (orgId: string) =>
+    `${API_URL}/api/v1/organizations/${orgId}/chat/stream`,
+};
+
 // Waitlist endpoints (public, no auth required)
 export const waitlistApi = {
   join: (email: string, source: string = 'landing_page') =>

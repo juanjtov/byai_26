@@ -15,8 +15,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY')
     )
 
-    # OpenAI
+    # OpenAI (for embeddings)
     openai_api_key: str
+
+    # OpenRouter (for chat completions)
+    openrouter_api_key: str = ""
+    openrouter_default_model: str = "anthropic/claude-3.5-sonnet"
 
     # Application
     app_env: str = "development"

@@ -3,6 +3,7 @@ from typing import List
 
 from app.dependencies import get_current_org_id
 from app.services.document import DocumentService
+from app.services.document_processor import DocumentProcessorService
 from app.schemas.document import (
     UploadUrlRequest,
     UploadUrlResponse,
@@ -12,6 +13,7 @@ from app.schemas.document import (
 
 router = APIRouter()
 doc_service = DocumentService()
+doc_processor = DocumentProcessorService()
 
 
 @router.post("/{org_id}/documents/upload-url", response_model=UploadUrlResponse)
@@ -45,8 +47,12 @@ async def create_document(
     try:
         document = await doc_service.create_document(org_id, data.model_dump())
 
-        # TODO: Add background task to process document with OpenAI
-        # background_tasks.add_task(process_document, document["id"])
+        # Process document and create embeddings in background
+        background_tasks.add_task(
+            doc_processor.process_and_embed_document,
+            document["id"],
+            org_id
+        )
 
         return document
     except ValueError as e:
