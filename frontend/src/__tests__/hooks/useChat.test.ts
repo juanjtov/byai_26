@@ -6,7 +6,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useChat } from '@/hooks/useChat'
 import { chatApi } from '@/lib/api'
-import type { ReactNode } from 'react'
 
 // Mock the auth context
 const mockOrganization = { id: 'org-123', name: 'Test Org', slug: 'test-org', role: 'owner' }
