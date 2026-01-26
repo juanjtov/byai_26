@@ -14,14 +14,19 @@ interface Organization {
   role: string;
 }
 
+interface SignupResult {
+  requiresEmailConfirmation: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   organization: Organization | null;
   accessToken: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, organizationName: string) => Promise<void>;
+  signup: (email: string, password: string, organizationName: string) => Promise<SignupResult>;
   logout: () => Promise<void>;
+  resendConfirmation: (email: string) => Promise<void>;
   setOrganization: (org: Organization | null) => void;
 }
 
@@ -139,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganization(org);
   };
 
-  const signup = async (email: string, password: string, organizationName: string) => {
+  const signup = async (email: string, password: string, organizationName: string): Promise<SignupResult> => {
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
     }
@@ -160,8 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check if email confirmation is required
     if (!data.session) {
-      // Email confirmation required - user needs to verify email first
-      throw new Error('Please check your email to confirm your account before signing in.');
+      // Email confirmation required - return status instead of throwing error
+      return { requiresEmailConfirmation: true };
     }
 
     // Step 2: Set user state
@@ -181,6 +186,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (orgError) {
       // Log error but don't fail signup - user can create org later
       console.error('Failed to initialize organization:', orgError);
+    }
+
+    return { requiresEmailConfirmation: false };
+  };
+
+  const resendConfirmation = async (email: string): Promise<void> => {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Authentication is not configured. Please set up Supabase environment variables.');
+    }
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
   };
 
@@ -203,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         logout,
+        resendConfirmation,
         setOrganization,
       }}
     >
