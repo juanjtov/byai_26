@@ -63,6 +63,9 @@ logs/
 *.tiff
 *.svg
 
+# Allow frontend favicon files
+!frontend/public/favicon*
+
 # Database
 *.db
 *.sqlite3
