@@ -6,10 +6,13 @@ to enable dynamic output formatting per organization.
 """
 
 import json
+import logging
 from typing import Optional, Dict, List
 
 from app.services.supabase import get_supabase_admin
 from app.services.openrouter import OpenRouterService
+
+logger = logging.getLogger("remodly.format_extractor")
 
 
 class FormatExtractorService:
@@ -19,6 +22,9 @@ class FormatExtractorService:
 
 Document text:
 {document_text}
+
+Formatting metadata detected from the document:
+{formatting_metadata}
 
 Extract and return a JSON object with these fields:
 {{
@@ -37,9 +43,23 @@ Extract and return a JSON object with these fields:
     }},
     "pricing_format": "description of how prices/costs are formatted",
     "boilerplate_text": "any standard clauses or repeated legal/disclaimer text",
+    "typography": {{
+        "primary_font": "most commonly used font from the metadata",
+        "heading_font": "font used for headings (often bold variant)",
+        "body_font": "font used for body text",
+        "heading_sizes": {{"h1": size, "h2": size, "h3": size}},
+        "uses_bold_for_emphasis": true/false,
+        "uses_italic_for_emphasis": true/false
+    }},
+    "colors": {{
+        "primary_text_color": "#hex color for main text",
+        "heading_color": "#hex color for headings",
+        "accent_color": "#hex color for highlights/accents"
+    }},
     "confidence_score": 0.0-1.0
 }}
 
+Use the formatting metadata to populate typography and colors accurately.
 Return ONLY valid JSON, no markdown or explanation."""
 
     def __init__(self):
@@ -51,7 +71,8 @@ Return ONLY valid JSON, no markdown or explanation."""
         doc_id: str,
         org_id: str,
         text: str,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        formatting_metadata: Optional[Dict] = None
     ) -> Optional[Dict]:
         """
         Analyze a document to extract its formatting patterns.
@@ -61,6 +82,7 @@ Return ONLY valid JSON, no markdown or explanation."""
             org_id: Organization UUID
             text: Extracted document text
             metadata: Optional document metadata
+            formatting_metadata: Optional formatting data (fonts, colors, etc.)
 
         Returns:
             Extracted format patterns or None if extraction failed
@@ -71,13 +93,21 @@ Return ONLY valid JSON, no markdown or explanation."""
         # Limit text to avoid token overflow
         truncated_text = text[:8000] if len(text) > 8000 else text
 
+        # Format the formatting metadata for the prompt
+        formatting_str = "None detected"
+        if formatting_metadata:
+            formatting_str = json.dumps(formatting_metadata, indent=2)
+
         try:
-            prompt = self.EXTRACTION_PROMPT.format(document_text=truncated_text)
+            prompt = self.EXTRACTION_PROMPT.format(
+                document_text=truncated_text,
+                formatting_metadata=formatting_str
+            )
 
             response = await self.openrouter.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=2000,
+                max_tokens=2500,
             )
 
             # Parse JSON response
@@ -91,7 +121,7 @@ Return ONLY valid JSON, no markdown or explanation."""
             return patterns
 
         except Exception as e:
-            print(f"Format extraction failed for doc {doc_id}: {e}")
+            logger.error(f"Format extraction failed for doc {doc_id}: {e}", exc_info=True)
             return None
 
     def _parse_json_response(self, response: str) -> Optional[Dict]:
@@ -140,7 +170,7 @@ Return ONLY valid JSON, no markdown or explanation."""
             "document_id", doc_id
         ).execute()
 
-        # Insert new patterns
+        # Insert new patterns with typography and colors
         self.admin.table("document_format_patterns").insert({
             "document_id": doc_id,
             "organization_id": org_id,
@@ -150,6 +180,8 @@ Return ONLY valid JSON, no markdown or explanation."""
             "structure": patterns.get("structure", {}),
             "pricing_format": patterns.get("pricing_format"),
             "boilerplate_text": patterns.get("boilerplate_text"),
+            "typography": patterns.get("typography", {}),
+            "colors": patterns.get("colors", {}),
             "confidence_score": patterns.get("confidence_score", 0.5),
         }).execute()
 
@@ -177,6 +209,8 @@ Return ONLY valid JSON, no markdown or explanation."""
 
     def _aggregate_patterns(self, patterns: List[Dict]) -> Dict:
         """Merge patterns from multiple documents into a single set."""
+        from collections import Counter
+
         # Collect unique section headers (ordered by frequency)
         all_headers = []
         for p in patterns:
@@ -221,12 +255,69 @@ Return ONLY valid JSON, no markdown or explanation."""
                 pricing_format = p.get("pricing_format")
                 break
 
+        # Aggregate typography - get most common fonts
+        font_counter: Counter = Counter()
+        all_heading_sizes: Dict[str, List[int]] = {"h1": [], "h2": [], "h3": []}
+        bold_usage_count = 0
+        italic_usage_count = 0
+
+        for p in patterns:
+            typo = p.get("typography") or {}
+            if typo.get("primary_font"):
+                font_counter[typo["primary_font"]] += 2  # Weight primary font higher
+            if typo.get("heading_font"):
+                font_counter[typo["heading_font"]] += 1
+            if typo.get("body_font"):
+                font_counter[typo["body_font"]] += 1
+
+            heading_sizes = typo.get("heading_sizes") or {}
+            for level in ["h1", "h2", "h3"]:
+                if heading_sizes.get(level):
+                    all_heading_sizes[level].append(heading_sizes[level])
+
+            if typo.get("uses_bold_for_emphasis"):
+                bold_usage_count += 1
+            if typo.get("uses_italic_for_emphasis"):
+                italic_usage_count += 1
+
+        # Build aggregated typography
+        most_common_fonts = [font for font, _ in font_counter.most_common(3)]
+        aggregated_typography = {
+            "primary_font": most_common_fonts[0] if most_common_fonts else None,
+            "fonts_used": most_common_fonts,
+            "heading_sizes": {
+                level: round(sum(sizes) / len(sizes)) if sizes else None
+                for level, sizes in all_heading_sizes.items()
+            },
+            "uses_bold_for_emphasis": bold_usage_count > len(patterns) / 2,
+            "uses_italic_for_emphasis": italic_usage_count > len(patterns) / 2,
+        }
+
+        # Aggregate colors - get most common
+        color_counter: Counter = Counter()
+        for p in patterns:
+            colors = p.get("colors") or {}
+            if colors.get("primary_text_color"):
+                color_counter[colors["primary_text_color"]] += 2
+            if colors.get("heading_color"):
+                color_counter[colors["heading_color"]] += 1
+            if colors.get("accent_color"):
+                color_counter[colors["accent_color"]] += 1
+
+        most_common_colors = [color for color, _ in color_counter.most_common(5)]
+        aggregated_colors = {
+            "primary_text_color": most_common_colors[0] if most_common_colors else "#000000",
+            "colors_used": most_common_colors,
+        }
+
         return {
             "section_headers": unique_headers,
             "numbering_style": most_common_style,
             "terminology": merged_terminology,
             "structure": best_structure,
             "pricing_format": pricing_format,
+            "typography": aggregated_typography,
+            "colors": aggregated_colors,
             "document_count": len(patterns),
         }
 

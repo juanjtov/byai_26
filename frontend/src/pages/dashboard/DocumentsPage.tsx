@@ -27,6 +27,7 @@ export function DocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [selectedType, setSelectedType] = useState('contract');
+  const [reprocessingIds, setReprocessingIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDocuments = async () => {
@@ -55,6 +56,21 @@ export function DocumentsPage() {
 
     fetchDocuments();
   }, [organization, accessToken]);
+
+  // Auto-refresh when there are documents being processed
+  useEffect(() => {
+    const hasProcessingDocs = documents.some(
+      (d) => d.status === 'processing' || d.status === 'pending'
+    );
+
+    if (!hasProcessingDocs || !organization?.id || !accessToken) return;
+
+    const pollInterval = setInterval(() => {
+      fetchDocuments();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [documents, organization, accessToken]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,6 +138,58 @@ export function DocumentsPage() {
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete document');
+    }
+  };
+
+  const handleReprocess = async (docId: string) => {
+    if (!organization?.id || !accessToken) return;
+
+    setReprocessingIds((prev) => new Set(prev).add(docId));
+    setError('');
+
+    try {
+      await documentApi.reprocess(organization.id, docId, accessToken);
+      // Update local state to show processing status
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.id === docId ? { ...d, status: 'processing' } : d
+        )
+      );
+
+      // Poll for completion (check every 2 seconds, up to 60 seconds)
+      const maxAttempts = 30;
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const doc = await documentApi.get(organization.id, docId, accessToken) as Document;
+          if (doc.status !== 'processing' || attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            setDocuments((prev) =>
+              prev.map((d) => (d.id === docId ? { ...d, status: doc.status } : d))
+            );
+            setReprocessingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(docId);
+              return next;
+            });
+          }
+        } catch {
+          clearInterval(pollInterval);
+          setReprocessingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(docId);
+            return next;
+          });
+        }
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reprocess document');
+      setReprocessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(docId);
+        return next;
+      });
     }
   };
 
@@ -261,6 +329,17 @@ export function DocumentsPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     {getStatusBadge(doc.status)}
+                    {(doc.status === 'error' || doc.status === 'pending' || doc.status === 'processed') && (
+                      <button
+                        onClick={() => handleReprocess(doc.id)}
+                        disabled={reprocessingIds.has(doc.id)}
+                        className={`text-copper hover:text-copper/80 transition-colors ${
+                          reprocessingIds.has(doc.id) ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {reprocessingIds.has(doc.id) ? 'Reprocessing...' : 'Reprocess'}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(doc.id)}
                       className="text-red-400 hover:text-red-300 transition-colors"

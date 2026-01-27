@@ -4,11 +4,14 @@ Embedding service for RAG (Retrieval-Augmented Generation).
 Handles document chunking, embedding creation, and similarity search.
 """
 
+import logging
 from typing import List, Dict, Any, Optional
 import httpx
 
 from app.config import get_settings
 from app.services.supabase import get_supabase_admin
+
+logger = logging.getLogger("remodly.embedding")
 
 
 class EmbeddingService:
@@ -16,13 +19,13 @@ class EmbeddingService:
 
     CHUNK_SIZE = 1000  # characters per chunk
     CHUNK_OVERLAP = 200  # overlap between chunks
-    EMBEDDING_MODEL = "openai/text-embedding-3-small"  # Via OpenRouter
     EMBEDDING_DIMENSION = 1536
 
     def __init__(self):
         self.admin = get_supabase_admin()
         settings = get_settings()
         self.openrouter_api_key = settings.openrouter_api_key
+        self.embedding_model = settings.openrouter_embedding_model
 
     def chunk_text(self, text: str) -> List[str]:
         """
@@ -81,13 +84,14 @@ class EmbeddingService:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": self.EMBEDDING_MODEL,
+                    "model": self.embedding_model,
                     "input": text,
                 },
                 timeout=30.0,
             )
 
             if response.status_code != 200:
+                logger.error(f"OpenRouter embedding error: {response.status_code} - {response.text}")
                 raise Exception(f"OpenRouter embedding error: {response.status_code} - {response.text}")
 
             result = response.json()
@@ -115,7 +119,10 @@ class EmbeddingService:
         chunks = self.chunk_text(text)
 
         if not chunks:
+            logger.warning(f"No chunks created for document {doc_id}")
             return 0
+
+        logger.info(f"Creating {len(chunks)} embeddings for document {doc_id}")
 
         for i, chunk in enumerate(chunks):
             embedding = await self.create_embedding(chunk)
@@ -129,6 +136,7 @@ class EmbeddingService:
                 "metadata": metadata or {},
             }).execute()
 
+        logger.info(f"Successfully created {len(chunks)} embeddings for document {doc_id}")
         return len(chunks)
 
     async def delete_document_embeddings(self, doc_id: str) -> None:
@@ -138,9 +146,11 @@ class EmbeddingService:
         Args:
             doc_id: Document UUID
         """
+        logger.info(f"Deleting embeddings for document {doc_id}")
         self.admin.table("document_embeddings").delete().eq(
             "document_id", doc_id
         ).execute()
+        logger.debug(f"Deleted embeddings for document {doc_id}")
 
     async def search_similar(
         self,

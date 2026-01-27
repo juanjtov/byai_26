@@ -132,3 +132,32 @@ async def delete_document(
 
     await doc_service.delete_document(doc_id, document["file_path"])
     return {"message": "Document deleted"}
+
+
+@router.post("/{org_id}/documents/{doc_id}/reprocess")
+async def reprocess_document(
+    org_id: str,
+    doc_id: str,
+    background_tasks: BackgroundTasks,
+    current_org_id: str = Depends(get_current_org_id),
+):
+    """Trigger reprocessing of a document."""
+    if org_id != current_org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Verify document exists and belongs to org
+    document = await doc_service.get_document(doc_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if document["organization_id"] != org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Trigger reprocessing in background
+    background_tasks.add_task(
+        doc_processor.reprocess_document,
+        doc_id,
+        org_id
+    )
+
+    return {"message": "Document reprocessing started", "status": "processing"}

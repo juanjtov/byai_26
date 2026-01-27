@@ -126,6 +126,15 @@ export const documentApi = {
       method: 'DELETE',
       token,
     }),
+
+  reprocess: (orgId: string, docId: string, token: string) =>
+    api<{ message: string; status: string }>(
+      `/api/v1/organizations/${orgId}/documents/${docId}/reprocess`,
+      {
+        method: 'POST',
+        token,
+      }
+    ),
 };
 
 // Chat types - re-exported from types/chat.ts

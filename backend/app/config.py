@@ -20,7 +20,8 @@ class Settings(BaseSettings):
 
     # OpenRouter (for chat completions)
     openrouter_api_key: str = ""
-    openrouter_default_model: str = "anthropic/claude-3.5-sonnet"
+    openrouter_default_model: str = "openai/gpt-4o-mini"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
 
     # Application
     app_env: str = "development"

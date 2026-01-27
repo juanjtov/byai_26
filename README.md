@@ -41,7 +41,9 @@ REMODLY helps general contractors streamline their estimation process:
 | Database | Supabase PostgreSQL |
 | Auth | Supabase Auth |
 | Storage | Supabase Storage |
-| AI/LLM | OpenAI GPT-4 |
+| AI/LLM | OpenRouter (GPT-4o-mini, Claude, etc.) |
+| Embeddings | OpenAI text-embedding-3-small (via OpenRouter) |
+| Doc Processing | PyMuPDF, python-docx, openpyxl |
 
 ## Getting Started
 
@@ -106,17 +108,93 @@ npm run dev
 
 Frontend runs at: http://localhost:5173
 
+## Document Processing
+
+When a user uploads a document, the system processes it through several stages:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Document Processing Flow                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. UPLOAD                                                               │
+│     User uploads file → Stored in Supabase Storage                      │
+│     Status: "pending"                                                    │
+│                                                                          │
+│  2. TEXT & FORMATTING EXTRACTION (No LLM)                               │
+│     ├─ PDF:  PyMuPDF extracts text + fonts, colors, sizes               │
+│     ├─ DOCX: python-docx extracts text + fonts, bold/italic, headings   │
+│     └─ XLSX: openpyxl extracts text + cell formatting                   │
+│     Status: "processing"                                                 │
+│                                                                          │
+│  3. EMBEDDING CREATION (OpenRouter API)                                  │
+│     Text → Chunked (1000 chars) → Embedding model → Vector stored       │
+│     Model: OPENROUTER_EMBEDDING_MODEL (default: text-embedding-3-small) │
+│                                                                          │
+│  4. FORMAT PATTERN ANALYSIS (OpenRouter API)                            │
+│     Text + Formatting metadata → LLM analyzes → Patterns stored         │
+│     Model: OPENROUTER_DEFAULT_MODEL (default: gpt-4o-mini)              │
+│     Extracts: section headers, numbering, terminology, typography,      │
+│               colors, pricing format, boilerplate text                   │
+│     Status: "processed"                                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Models Used
+
+| Purpose | Config Variable | Default | Description |
+|---------|-----------------|---------|-------------|
+| Chat & Format Analysis | `OPENROUTER_DEFAULT_MODEL` | `openai/gpt-4o-mini` | LLM for semantic analysis |
+| Vector Embeddings | `OPENROUTER_EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Creates embeddings for RAG |
+
+### Document Types with Format Extraction
+
+Format patterns are extracted from these document types:
+- `contract` - Legal agreements
+- `estimate` - Project estimates
+- `proposal` - Business proposals
+- `invoice` - Invoices
+- `quote` - Price quotes
+- `addendum` - Contract addendums
+
+Other document types (`cost_sheet`, `other`) only get text extraction and embeddings.
+
+### Reprocessing Documents
+
+Documents can be reprocessed via the UI (click "Reprocess" button) or API:
+
+```bash
+POST /api/v1/organizations/{org_id}/documents/{doc_id}/reprocess
+```
+
+This deletes existing embeddings and format patterns, then re-runs the full processing pipeline.
+
 ## Environment Variables
 
 ### Backend (.env)
 
 ```env
+# Supabase
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_PUBLISHABLE_KEY=your-anon-key
+SUPABASE_SECRET_KEY=your-service-role-key
+
+# OpenAI (legacy, for direct OpenAI calls)
 OPENAI_API_KEY=your-openai-key
-JWT_SECRET=your-jwt-secret
+
+# OpenRouter (for LLM and embeddings)
+OPENROUTER_API_KEY=your-openrouter-key
+OPENROUTER_DEFAULT_MODEL=openai/gpt-4o-mini          # LLM for chat and format analysis
+OPENROUTER_EMBEDDING_MODEL=openai/text-embedding-3-small  # Embedding model for RAG
+
+# Application
+APP_ENV=development
+DEBUG=true
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
+
+Settings are loaded via Pydantic in `backend/app/config.py`. All environment variables have sensible defaults except for the required Supabase and API keys.
 
 ### Frontend (.env)
 
