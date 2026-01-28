@@ -98,3 +98,72 @@ SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 ```
 VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_API_URL
 ```
+
+## Debugging Guide
+
+### Methodology: Always Examine Both Layers
+
+When debugging issues where "data doesn't display correctly", investigate BOTH:
+
+1. **Data Layer** (Backend/API/State)
+   - Is the API returning complete data?
+   - Is state being updated correctly?
+   - Check browser DevTools Network tab for API responses
+   - Add `console.log` to verify state contents
+
+2. **Rendering Layer** (React/CSS/Animations)
+   - Is the component receiving the data?
+   - Are there CSS issues (visibility, opacity, display)?
+   - Are animations interfering with visibility?
+   - Check browser DevTools Elements tab for computed styles
+
+### Case Study: Document Upload Empty Row Bug
+
+**Symptom**: After uploading a document, an empty row appeared in the list. Document only visible after page refresh.
+
+**Initial (Wrong) Hypothesis**: Backend API not returning complete data from Supabase insert.
+
+**Actual Root Cause**: Framer Motion animation issue. New list items got `initial="hidden"` (opacity: 0) but the parent was already in "visible" state, so children never animated to visible.
+
+**Key Evidence That Pointed to Animation**:
+- Document count increased (data WAS in state)
+- Row took up space (element WAS rendered)
+- Content was invisible (stuck at opacity: 0)
+- Refresh fixed it (triggered fresh animation sequence)
+
+**Fix**: Added `key={documents.length}` to force list remount on changes:
+```jsx
+<motion.div
+  key={documents.length}  // Forces remount, triggering animation
+  variants={staggerList}
+  initial="hidden"
+  animate="visible"
+>
+```
+
+**Lesson**: When something "exists but is invisible", check the rendering layer (CSS, animations) not just the data layer.
+
+### Framer Motion: Dynamic Lists
+
+When using Framer Motion with lists that change dynamically:
+
+**Problem Pattern**:
+```jsx
+<motion.div initial="hidden" animate="visible">
+  {items.map(item => (
+    <motion.div key={item.id} variants={childVariant}>  // New items stay hidden!
+```
+
+**Solutions**:
+1. **Key on parent** (simple): `key={items.length}` forces remount
+2. **AnimatePresence** (better UX): Proper enter/exit animations for dynamic content
+```jsx
+<AnimatePresence initial={false}>
+  {items.map(item => (
+    <motion.div
+      key={item.id}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+```

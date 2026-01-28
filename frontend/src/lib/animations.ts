@@ -87,3 +87,29 @@ export const viewportConfig = {
   once: true,
   amount: 0.15,
 };
+
+// List animations for document cards
+export const staggerList: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+export const listItem: Variants = {
+  hidden: {
+    opacity: 0,
+    x: -8,
+  },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.3,
+      ease: 'easeOut',
+    },
+  },
+};

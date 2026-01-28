@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentApi } from '@/lib/api';
 import { DashboardLayout, OrganizationSetup } from '@/components/dashboard';
+import { DropZone } from '@/components/ui/DropZone';
+import { DocumentCard, EmptyState } from '@/components/dashboard/documents';
+import { fadeInUp, staggerContainer, staggerList, listItem } from '@/lib/animations';
 
 interface Document {
   id: string;
@@ -28,13 +32,14 @@ export function DocumentsPage() {
   const [error, setError] = useState('');
   const [selectedType, setSelectedType] = useState('contract');
   const [reprocessingIds, setReprocessingIds] = useState<Set<string>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   const fetchDocuments = async () => {
     if (!organization?.id || !accessToken) return;
 
     try {
-      const data = await documentApi.list(organization.id, accessToken) as Document[];
+      const data = (await documentApi.list(organization.id, accessToken)) as Document[];
       setDocuments(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load documents');
@@ -46,7 +51,6 @@ export function DocumentsPage() {
   useEffect(() => {
     if (!accessToken) return;
 
-    // Exit loading if organization is explicitly null
     if (organization === null) {
       setLoading(false);
       return;
@@ -67,64 +71,91 @@ export function DocumentsPage() {
 
     const pollInterval = setInterval(() => {
       fetchDocuments();
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [documents, organization, accessToken]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !organization?.id || !accessToken) return;
+  // Handle file selection (append to existing)
+  const handleFilesSelect = (files: File[]) => {
+    setPendingFiles((prev) => [...prev, ...files]);
+    setError('');
+  };
+
+  // Handle removing a specific file
+  const handleRemoveFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload a single file
+  const uploadSingleFile = async (file: File): Promise<void> => {
+    if (!organization?.id || !accessToken) throw new Error('Not authenticated');
+
+    // Get upload URL
+    const uploadData = (await documentApi.getUploadUrl(
+      organization.id,
+      file.name,
+      file.type || 'application/pdf',
+      accessToken
+    )) as { upload_url: string; file_path: string };
+
+    // Upload file to Supabase Storage
+    const uploadResponse = await fetch(uploadData.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/pdf' },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload ${file.name}`);
+    }
+
+    // Create document record
+    await documentApi.create(
+      organization.id,
+      {
+        name: file.name,
+        type: selectedType,
+        file_path: uploadData.file_path,
+        file_size: file.size,
+        mime_type: file.type || 'application/pdf',
+      },
+      accessToken
+    );
+  };
+
+  // Handle uploading all files
+  const handleUpload = async () => {
+    if (pendingFiles.length === 0 || !organization?.id || !accessToken) return;
 
     setError('');
     setUploading(true);
+    setUploadProgress({ current: 0, total: pendingFiles.length });
 
-    try {
-      // Get upload URL
-      const uploadData = await documentApi.getUploadUrl(
-        organization.id,
-        file.name,
-        file.type || 'application/pdf',
-        accessToken
-      ) as { upload_url: string; file_path: string };
+    const failedFiles: string[] = [];
 
-      // Upload file to Supabase Storage
-      const uploadResponse = await fetch(uploadData.upload_url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/pdf',
-        },
-        body: file,
-      });
+    // Upload files sequentially
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const file = pendingFiles[i];
+      setUploadProgress({ current: i + 1, total: pendingFiles.length });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
+      try {
+        await uploadSingleFile(file);
+      } catch {
+        failedFiles.push(file.name);
       }
+    }
 
-      // Create document record
-      await documentApi.create(
-        organization.id,
-        {
-          name: file.name,
-          type: selectedType,
-          file_path: uploadData.file_path,
-          file_size: file.size,
-          mime_type: file.type || 'application/pdf',
-        },
-        accessToken
-      );
+    // Clear pending files
+    setPendingFiles([]);
+    setUploadProgress({ current: 0, total: 0 });
+    setUploading(false);
 
-      // Refresh documents list
-      await fetchDocuments();
+    // Refresh documents list from backend
+    await fetchDocuments();
 
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload document');
-    } finally {
-      setUploading(false);
+    if (failedFiles.length > 0) {
+      setError(`Failed to upload: ${failedFiles.join(', ')}`);
     }
   };
 
@@ -149,20 +180,20 @@ export function DocumentsPage() {
 
     try {
       await documentApi.reprocess(organization.id, docId, accessToken);
-      // Update local state to show processing status
       setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === docId ? { ...d, status: 'processing' } : d
-        )
+        prev.map((d) => (d.id === docId ? { ...d, status: 'processing' } : d))
       );
 
-      // Poll for completion (check every 2 seconds, up to 60 seconds)
       const maxAttempts = 30;
       let attempts = 0;
       const pollInterval = setInterval(async () => {
         attempts++;
         try {
-          const doc = await documentApi.get(organization.id, docId, accessToken) as Document;
+          const doc = (await documentApi.get(
+            organization.id,
+            docId,
+            accessToken
+          )) as Document;
           if (doc.status !== 'processing' || attempts >= maxAttempts) {
             clearInterval(pollInterval);
             setDocuments((prev) =>
@@ -193,26 +224,21 @@ export function DocumentsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      pending: 'bg-yellow-500/20 text-yellow-400',
-      processing: 'bg-blue-500/20 text-blue-400',
-      processed: 'bg-green-500/20 text-green-400',
-      error: 'bg-red-500/20 text-red-400',
-    };
-
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs ${styles[status] || styles.pending}`}>
-        {status}
-      </span>
-    );
+  const getTypeLabel = (type: string) => {
+    return documentTypes.find((t) => t.value === type)?.label || type;
   };
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return 'Unknown size';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const getUploadButtonText = () => {
+    if (uploading) {
+      return `Uploading ${uploadProgress.current} of ${uploadProgress.total}...`;
+    }
+    if (pendingFiles.length === 0) {
+      return 'Upload Document';
+    }
+    if (pendingFiles.length === 1) {
+      return 'Upload Document';
+    }
+    return `Upload ${pendingFiles.length} Documents`;
   };
 
   if (loading) {
@@ -232,34 +258,64 @@ export function DocumentsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <div>
+      <motion.div
+        className="space-y-6"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Header */}
+        <motion.div variants={fadeInUp}>
           <h1 className="font-display text-3xl text-ivory">Documents</h1>
-          <p className="mt-2 text-body">
+          <p className="mt-1 text-body">
             Upload contracts, cost sheets, and addendums to train the estimation system.
           </p>
-        </div>
+        </motion.div>
 
+        {/* Error Banner */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm">
+          <motion.div
+            variants={fadeInUp}
+            className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
-        {/* Upload section */}
-        <div className="bg-ivory/5 border border-ivory/10 rounded-xl p-6">
-          <h2 className="font-display text-xl text-ivory mb-4">Upload Document</h2>
+        {/* Upload Section */}
+        <motion.div
+          variants={fadeInUp}
+          className="bg-ivory/5 border border-ivory/10 rounded-xl p-6"
+        >
+          <h2 className="font-display text-xl text-ivory mb-3">Upload Documents</h2>
 
-          <div className="flex items-end gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* DropZone */}
             <div className="flex-1">
-              <label htmlFor="docType" className="block text-sm text-ivory/80 mb-2">
+              <DropZone
+                onFilesSelect={handleFilesSelect}
+                onRemoveFile={handleRemoveFile}
+                selectedFiles={pendingFiles}
+                uploading={uploading}
+                disabled={uploading}
+                multiple={true}
+              />
+            </div>
+
+            {/* Type Selector + Upload Button */}
+            <div className="sm:w-52 flex flex-col">
+              <label
+                htmlFor="docType"
+                className="block text-sm text-ivory/80 mb-2"
+              >
                 Document Type
               </label>
               <select
                 id="docType"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-4 py-3 bg-ivory/5 border border-ivory/10 rounded-lg text-ivory focus:outline-none focus:border-copper transition-colors"
+                disabled={uploading}
+                className="w-full px-4 py-3 bg-ivory/5 border border-ivory/10 rounded-lg text-ivory focus:outline-none focus:border-copper transition-colors disabled:opacity-50"
               >
                 {documentTypes.map((type) => (
                   <option key={type.value} value={type.value} className="bg-obsidian">
@@ -267,92 +323,69 @@ export function DocumentsPage() {
                   </option>
                 ))}
               </select>
-            </div>
+              {pendingFiles.length > 1 && (
+                <p className="mt-1 text-xs text-body/60">
+                  All files will be uploaded as {getTypeLabel(selectedType)}
+                </p>
+              )}
 
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx"
-                onChange={handleUpload}
-                className="hidden"
-                id="fileInput"
-              />
-              <label
-                htmlFor="fileInput"
-                className={`inline-flex items-center gap-2 px-6 py-3 bg-copper text-obsidian font-medium rounded-lg hover:bg-copper/90 transition-colors cursor-pointer ${
-                  uploading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={pendingFiles.length === 0 || uploading}
+                className={`
+                  mt-3 w-full px-4 py-3 rounded-lg font-medium transition-colors
+                  ${
+                    pendingFiles.length > 0 && !uploading
+                      ? 'bg-copper text-obsidian hover:bg-copper/90 cursor-pointer'
+                      : 'bg-ivory/10 text-ivory/40 cursor-not-allowed'
+                  }
+                `}
               >
-                {uploading ? (
-                  <>
-                    <span className="animate-spin">&#9696;</span>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <span>+</span>
-                    Upload File
-                  </>
-                )}
-              </label>
+                {getUploadButtonText()}
+              </button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Documents list */}
-        <div className="bg-ivory/5 border border-ivory/10 rounded-xl overflow-hidden">
+        {/* Documents List */}
+        <motion.div
+          variants={fadeInUp}
+          className="bg-ivory/5 border border-ivory/10 rounded-xl overflow-hidden"
+        >
           <div className="p-6 border-b border-ivory/10">
-            <h2 className="font-display text-xl text-ivory">Uploaded Documents</h2>
+            <h2 className="font-display text-xl text-ivory">
+              Uploaded Documents
+              {documents.length > 0 && (
+                <span className="ml-2 text-body font-normal">({documents.length})</span>
+              )}
+            </h2>
           </div>
 
           {documents.length === 0 ? (
-            <div className="p-12 text-center text-body">
-              No documents uploaded yet. Upload your first document above.
-            </div>
+            <EmptyState />
           ) : (
-            <div className="divide-y divide-ivory/10">
+            <motion.div
+              key={documents.length}
+              variants={staggerList}
+              initial="hidden"
+              animate="visible"
+            >
               {documents.map((doc) => (
-                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-ivory/5 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-copper/20 rounded-lg flex items-center justify-center text-copper">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-ivory font-medium">{doc.name}</div>
-                      <div className="text-sm text-body">
-                        {documentTypes.find((t) => t.value === doc.type)?.label || doc.type} &middot; {formatFileSize(doc.file_size)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {getStatusBadge(doc.status)}
-                    {(doc.status === 'error' || doc.status === 'pending' || doc.status === 'processed') && (
-                      <button
-                        onClick={() => handleReprocess(doc.id)}
-                        disabled={reprocessingIds.has(doc.id)}
-                        className={`text-copper hover:text-copper/80 transition-colors ${
-                          reprocessingIds.has(doc.id) ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        {reprocessingIds.has(doc.id) ? 'Reprocessing...' : 'Reprocess'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+                <motion.div key={doc.id} variants={listItem}>
+                  <DocumentCard
+                    document={doc}
+                    onReprocess={() => handleReprocess(doc.id)}
+                    onDelete={() => handleDelete(doc.id)}
+                    isReprocessing={reprocessingIds.has(doc.id)}
+                    typeLabel={getTypeLabel(doc.type)}
+                  />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </DashboardLayout>
   );
 }
