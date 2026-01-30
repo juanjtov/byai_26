@@ -15,6 +15,8 @@ from app.schemas.chat import (
     ConversationUpdate,
     ConversationResponse,
     ConversationWithMessagesResponse,
+    ConversationSearchResult,
+    SearchRequest,
     StreamingChatRequest,
     ImageAnalysisResponse,
 )
@@ -43,18 +45,32 @@ async def create_conversation(
 @router.get("/{org_id}/chat/conversations", response_model=List[ConversationResponse])
 async def list_conversations(
     org_id: str,
-    saved_only: bool = True,
+    saved_only: bool = False,
+    search: Optional[str] = None,
+    limit: int = 50,
     user_context: tuple = Depends(get_current_user_context),
 ):
-    """Get user's conversations."""
+    """
+    Get user's conversations.
+
+    - saved_only: Filter to only saved conversations (default False since auto-save)
+    - search: Optional search query for full-text search
+    - limit: Maximum results to return
+    """
     user_id, current_org_id = user_context
 
     if org_id != current_org_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    conversations = await chat_service.get_user_conversations(
-        org_id, user_id, saved_only
-    )
+    if search:
+        # Use full-text search
+        conversations = await chat_service.search_conversations(
+            org_id, user_id, search, limit
+        )
+    else:
+        conversations = await chat_service.get_user_conversations(
+            org_id, user_id, saved_only, limit
+        )
     return conversations
 
 
@@ -138,6 +154,24 @@ async def delete_conversation(
     return {"message": "Conversation deleted"}
 
 
+@router.post("/{org_id}/chat/search", response_model=List[ConversationSearchResult])
+async def search_conversations(
+    org_id: str,
+    data: SearchRequest,
+    user_context: tuple = Depends(get_current_user_context),
+):
+    """Search user's conversations using full-text search."""
+    user_id, current_org_id = user_context
+
+    if org_id != current_org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    results = await chat_service.search_conversations(
+        org_id, user_id, data.query, data.limit
+    )
+    return results
+
+
 @router.post("/{org_id}/chat/stream")
 async def stream_chat(
     org_id: str,
@@ -178,9 +212,9 @@ async def stream_chat(
         yield f"data: {json.dumps({'conversation_id': conversation_id, 'type': 'start'})}\n\n"
 
         try:
-            # Stream AI response
+            # Stream AI response (pass user_id for context retrieval)
             async for chunk in chat_service.stream_response(
-                org_id, conversation_id, data.message
+                org_id, user_id, conversation_id, data.message
             ):
                 yield f"data: {json.dumps({'content': chunk, 'type': 'chunk'})}\n\n"
 

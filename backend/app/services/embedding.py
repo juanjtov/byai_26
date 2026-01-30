@@ -157,7 +157,7 @@ class EmbeddingService:
         org_id: str,
         query: str,
         limit: int = 5,
-        min_similarity: float = 0.5
+        min_similarity: float = 0.3
     ) -> List[Dict[str, Any]]:
         """
         Find similar document chunks using vector search.
@@ -166,29 +166,49 @@ class EmbeddingService:
             org_id: Organization UUID
             query: Search query text
             limit: Maximum results to return
-            min_similarity: Minimum similarity threshold
+            min_similarity: Minimum similarity threshold (default 0.3 for good recall)
 
         Returns:
             List of matching chunks with similarity scores
         """
-        query_embedding = await self.create_embedding(query)
+        logger.debug(f"Searching similar documents for org {org_id}, query: {query[:100]}...")
 
-        result = self.admin.rpc(
-            "match_document_embeddings",
-            {
-                "query_embedding": query_embedding,
-                "match_org_id": org_id,
-                "match_count": limit,
-            }
-        ).execute()
+        try:
+            query_embedding = await self.create_embedding(query)
+            logger.debug(f"Created query embedding, dimension: {len(query_embedding)}")
+        except Exception as e:
+            logger.error(f"Failed to create query embedding: {e}")
+            return []
 
-        # Filter by minimum similarity
-        matches = [
-            m for m in (result.data or [])
-            if m.get("similarity", 0) >= min_similarity
-        ]
+        try:
+            result = self.admin.rpc(
+                "match_document_embeddings",
+                {
+                    "query_embedding": query_embedding,
+                    "match_org_id": org_id,
+                    "match_count": limit,
+                }
+            ).execute()
 
-        return matches
+            all_matches = result.data or []
+            logger.debug(f"Found {len(all_matches)} raw matches from vector search")
+
+            if all_matches:
+                top_score = max(m.get("similarity", 0) for m in all_matches)
+                logger.info(f"RAG search: {len(all_matches)} matches, top similarity: {top_score:.3f}")
+
+            # Filter by minimum similarity
+            matches = [
+                m for m in all_matches
+                if m.get("similarity", 0) >= min_similarity
+            ]
+
+            logger.info(f"Returning {len(matches)} matches above threshold {min_similarity}")
+            return matches
+
+        except Exception as e:
+            logger.error(f"Vector search failed: {e}")
+            return []
 
     async def get_org_context(
         self,
@@ -210,6 +230,7 @@ class EmbeddingService:
         similar_chunks = await self.search_similar(org_id, query, limit=5)
 
         if not similar_chunks:
+            logger.info(f"No document context found for org {org_id}, query: {query[:50]}...")
             return ""
 
         context_parts = []
@@ -227,4 +248,5 @@ class EmbeddingService:
             context_parts.append(f"[Document excerpt]: {chunk_text}")
             total_chars += len(chunk_text)
 
+        logger.info(f"Built RAG context: {len(context_parts)} chunks, {total_chars} chars for org {org_id}")
         return "\n\n".join(context_parts)

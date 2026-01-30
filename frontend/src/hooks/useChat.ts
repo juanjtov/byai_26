@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatApi } from '@/lib/api';
 import type { ChatMessage, Conversation } from '@/types/chat';
@@ -9,11 +9,13 @@ interface UseChatReturn {
   isStreaming: boolean;
   conversationId: string | null;
   conversations: Conversation[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  isSearching: boolean;
   error: string | null;
   sendMessage: (content: string) => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
-  saveConversation: (title?: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
   clearError: () => void;
@@ -54,13 +56,63 @@ export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Conversation[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredRef = useRef(false);
 
   const clearError = useCallback(() => setError(null), []);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (!organization?.id || !accessToken) return;
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Debounce search by 300ms
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await chatApi.searchConversations(
+          organization.id,
+          searchQuery,
+          accessToken
+        );
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, organization?.id, accessToken]);
+
+  // Memoized conversation list - use search results when searching
+  const displayedConversations = useMemo(() => {
+    return searchResults !== null ? searchResults : conversations;
+  }, [searchResults, conversations]);
 
   // Persist conversation ID changes to sessionStorage
   useEffect(() => {
@@ -73,7 +125,8 @@ export function useChat(): UseChatReturn {
     if (!organization?.id || !accessToken) return;
 
     try {
-      const convs = await chatApi.listConversations(organization.id, true, accessToken);
+      // All conversations are auto-saved now, so savedOnly=false
+      const convs = await chatApi.listConversations(organization.id, false, accessToken);
       setConversations(convs);
     } catch (err) {
       console.error('Failed to fetch conversations:', err);
@@ -252,25 +305,6 @@ export function useChat(): UseChatReturn {
     }
   }, [organization?.id]);
 
-  const saveConversation = useCallback(async (title?: string) => {
-    if (!organization?.id || !accessToken || !conversationId) return;
-
-    setError(null);
-
-    try {
-      await chatApi.updateConversation(
-        organization.id,
-        conversationId,
-        { is_saved: true, title },
-        accessToken
-      );
-      await refreshConversations();
-    } catch (err) {
-      console.error('Failed to save conversation:', err);
-      setError('Failed to save conversation');
-    }
-  }, [organization?.id, accessToken, conversationId, refreshConversations]);
-
   const deleteConversation = useCallback(async (id: string) => {
     if (!organization?.id || !accessToken) return;
 
@@ -296,12 +330,14 @@ export function useChat(): UseChatReturn {
     isLoading,
     isStreaming,
     conversationId,
-    conversations,
+    conversations: displayedConversations,
+    searchQuery,
+    setSearchQuery,
+    isSearching,
     error,
     sendMessage,
     loadConversation,
     startNewConversation,
-    saveConversation,
     deleteConversation,
     refreshConversations,
     clearError,

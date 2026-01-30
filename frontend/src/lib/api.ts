@@ -138,8 +138,8 @@ export const documentApi = {
 };
 
 // Chat types - re-exported from types/chat.ts
-export type { ChatMessage, Conversation, ConversationWithMessages } from '@/types/chat';
-import type { Conversation, ConversationWithMessages } from '@/types/chat';
+export type { ChatMessage, Conversation, ConversationWithMessages, ConversationSearchResult } from '@/types/chat';
+import type { Conversation, ConversationWithMessages, ConversationSearchResult } from '@/types/chat';
 
 // Chat endpoints
 export const chatApi = {
@@ -151,11 +151,27 @@ export const chatApi = {
       token,
     }),
 
-  // List conversations
-  listConversations: (orgId: string, savedOnly: boolean, token: string) =>
-    api<Conversation[]>(
-      `/api/v1/organizations/${orgId}/chat/conversations?saved_only=${savedOnly}`,
+  // List conversations (auto-saved, so savedOnly defaults to false)
+  listConversations: (orgId: string, savedOnly: boolean = false, token: string, search?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    params.set('saved_only', String(savedOnly));
+    if (search) params.set('search', search);
+    if (limit) params.set('limit', String(limit));
+    return api<Conversation[]>(
+      `/api/v1/organizations/${orgId}/chat/conversations?${params.toString()}`,
       { token }
+    );
+  },
+
+  // Search conversations
+  searchConversations: (orgId: string, query: string, token: string, limit: number = 20) =>
+    api<ConversationSearchResult[]>(
+      `/api/v1/organizations/${orgId}/chat/search`,
+      {
+        method: 'POST',
+        body: { query, limit },
+        token,
+      }
     ),
 
   // Get single conversation with messages

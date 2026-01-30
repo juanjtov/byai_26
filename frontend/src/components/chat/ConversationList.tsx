@@ -1,4 +1,4 @@
-import type { Conversation } from '@/lib/api';
+import type { Conversation } from '@/types/chat';
 
 interface Props {
   conversations: Conversation[];
@@ -6,9 +6,39 @@ interface Props {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  isSearching: boolean;
 }
 
-export function ConversationList({ conversations, activeId, onSelect, onNew, onDelete }: Props) {
+// Tag color mapping for visual distinction
+const TAG_COLORS: Record<string, string> = {
+  bathroom: 'bg-blue-500/20 text-blue-300',
+  kitchen: 'bg-orange-500/20 text-orange-300',
+  flooring: 'bg-amber-500/20 text-amber-300',
+  roofing: 'bg-slate-500/20 text-slate-300',
+  painting: 'bg-purple-500/20 text-purple-300',
+  plumbing: 'bg-cyan-500/20 text-cyan-300',
+  electrical: 'bg-yellow-500/20 text-yellow-300',
+  hvac: 'bg-teal-500/20 text-teal-300',
+  siding: 'bg-stone-500/20 text-stone-300',
+  windows: 'bg-sky-500/20 text-sky-300',
+  doors: 'bg-rose-500/20 text-rose-300',
+  deck: 'bg-green-500/20 text-green-300',
+  basement: 'bg-indigo-500/20 text-indigo-300',
+  addition: 'bg-pink-500/20 text-pink-300',
+};
+
+export function ConversationList({
+  conversations,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+  searchQuery,
+  onSearchChange,
+  isSearching,
+}: Props) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -26,9 +56,13 @@ export function ConversationList({ conversations, activeId, onSelect, onNew, onD
     }
   };
 
+  const getTagColor = (tag: string) => {
+    return TAG_COLORS[tag] || 'bg-gray-500/20 text-gray-300';
+  };
+
   return (
     <div className="h-full flex flex-col bg-ivory/5 border border-ivory/10 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-ivory/10">
+      <div className="p-4 border-b border-ivory/10 space-y-3">
         <button
           onClick={onNew}
           className="w-full px-4 py-2 bg-copper text-obsidian font-medium rounded-lg hover:bg-copper/90 transition-colors flex items-center justify-center gap-2"
@@ -38,12 +72,55 @@ export function ConversationList({ conversations, activeId, onSelect, onNew, onD
           </svg>
           New Estimate
         </button>
+
+        {/* Search input */}
+        <div className="relative">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-body"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search conversations..."
+            className="w-full pl-10 pr-4 py-2 bg-ivory/5 border border-ivory/10 rounded-lg text-ivory placeholder:text-body text-sm focus:outline-none focus:border-copper transition-colors"
+          />
+          {isSearching && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <svg className="w-4 h-4 text-copper animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="p-4 text-center text-body text-sm">
-            No saved conversations yet
+            {searchQuery ? 'No matching conversations' : 'No conversations yet'}
           </div>
         ) : (
           <div className="divide-y divide-ivory/10">
@@ -55,13 +132,50 @@ export function ConversationList({ conversations, activeId, onSelect, onNew, onD
                 }`}
                 onClick={() => onSelect(conv.id)}
               >
-                <div className="text-sm text-ivory font-medium truncate pr-8">
-                  {conv.title || 'Untitled Estimate'}
+                {/* Title and message count */}
+                <div className="flex items-start justify-between gap-2 pr-8">
+                  <div className="text-sm text-ivory font-medium truncate flex-1">
+                    {conv.title || 'Untitled Estimate'}
+                  </div>
+                  {conv.message_count !== undefined && conv.message_count > 0 && (
+                    <span className="text-xs text-body whitespace-nowrap">
+                      {conv.message_count} msg{conv.message_count !== 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
-                <div className="text-xs text-body mt-1">
+
+                {/* Summary */}
+                {conv.summary && (
+                  <div className="text-xs text-body/80 mt-1 line-clamp-2">
+                    {conv.summary}
+                  </div>
+                )}
+
+                {/* Tags */}
+                {conv.tags && conv.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {conv.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className={`text-xs px-2 py-0.5 rounded-full ${getTagColor(tag)}`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {conv.tags.length > 3 && (
+                      <span className="text-xs text-body">
+                        +{conv.tags.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Date */}
+                <div className="text-xs text-body mt-2">
                   {formatDate(conv.updated_at)}
                 </div>
 
+                {/* Delete button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -69,7 +183,7 @@ export function ConversationList({ conversations, activeId, onSelect, onNew, onD
                       onDelete(conv.id);
                     }
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-400/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute right-2 top-4 p-2 text-red-400/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete conversation"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

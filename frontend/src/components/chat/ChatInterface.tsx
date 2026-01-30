@@ -12,11 +12,13 @@ export function ChatInterface() {
     isStreaming,
     conversationId,
     conversations,
+    searchQuery,
+    setSearchQuery,
+    isSearching,
     error,
     sendMessage,
     loadConversation,
     startNewConversation,
-    saveConversation,
     deleteConversation,
     clearError,
   } = useChat();
@@ -30,14 +32,17 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-[calc(100vh-12rem)] gap-6">
-      {/* Sidebar - Saved Conversations */}
-      <div className="w-64 flex-shrink-0">
+      {/* Sidebar - Conversations */}
+      <div className="w-72 flex-shrink-0">
         <ConversationList
           conversations={conversations}
           activeId={conversationId}
           onSelect={loadConversation}
           onNew={startNewConversation}
           onDelete={deleteConversation}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          isSearching={isSearching}
         />
       </div>
 
@@ -95,9 +100,7 @@ export function ChatInterface() {
         {/* Input */}
         <ChatInput
           onSend={sendMessage}
-          onSave={() => saveConversation()}
           disabled={isLoading}
-          canSave={!!conversationId && messages.length > 0}
           isSending={isLoading}
         />
       </div>

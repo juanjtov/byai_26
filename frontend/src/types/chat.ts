@@ -14,6 +14,17 @@ export interface Conversation {
   organization_id: string;
   user_id?: string;
   title?: string;
+  summary?: string;
+  tags?: string[];
+  message_count?: number;
+  project_context?: {
+    project_type?: string;
+    rooms?: string[];
+    materials?: string[];
+    dimensions?: string;
+    budget?: string;
+    timeline?: string;
+  };
   is_saved: boolean;
   created_at: string;
   updated_at: string;
@@ -21,4 +32,8 @@ export interface Conversation {
 
 export interface ConversationWithMessages extends Conversation {
   messages: ChatMessage[];
+}
+
+export interface ConversationSearchResult extends Conversation {
+  rank?: number;
 }

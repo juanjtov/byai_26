@@ -15,8 +15,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY')
     )
 
-    # OpenAI (for embeddings)
-    openai_api_key: str
+    # OpenAI (legacy - not used, OpenRouter handles embeddings now)
+    openai_api_key: str = ""
 
     # OpenRouter (for chat completions)
     openrouter_api_key: str = ""

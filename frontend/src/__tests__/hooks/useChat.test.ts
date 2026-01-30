@@ -22,6 +22,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 vi.mock('@/lib/api', () => ({
   chatApi: {
     listConversations: vi.fn(),
+    searchConversations: vi.fn(),
     getConversation: vi.fn(),
     createConversation: vi.fn(),
     updateConversation: vi.fn(),
@@ -74,9 +75,10 @@ describe('useChat', () => {
       renderHook(() => useChat())
 
       await waitFor(() => {
+        // All conversations are auto-saved now, so savedOnly=false
         expect(chatApi.listConversations).toHaveBeenCalledWith(
           mockOrganization.id,
-          true,
+          false,
           mockAccessToken
         )
       })
@@ -199,48 +201,6 @@ describe('useChat', () => {
     })
   })
 
-  describe('saveConversation', () => {
-    it('saves the current conversation', async () => {
-      vi.mocked(chatApi.updateConversation).mockResolvedValue({
-        id: 'conv-1',
-        organization_id: 'org-123',
-        user_id: 'user-1',
-        title: 'Saved Title',
-        is_saved: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-      })
-
-      const { result } = renderHook(() => useChat())
-
-      // Load a conversation first
-      await act(async () => {
-        await result.current.loadConversation('conv-1')
-      })
-
-      await act(async () => {
-        await result.current.saveConversation('My Estimate')
-      })
-
-      expect(chatApi.updateConversation).toHaveBeenCalledWith(
-        'org-123',
-        'conv-1',
-        { is_saved: true, title: 'My Estimate' },
-        mockAccessToken
-      )
-    })
-
-    it('does nothing if no conversation is active', async () => {
-      const { result } = renderHook(() => useChat())
-
-      await act(async () => {
-        await result.current.saveConversation()
-      })
-
-      expect(chatApi.updateConversation).not.toHaveBeenCalled()
-    })
-  })
-
   describe('deleteConversation', () => {
     it('deletes the specified conversation', async () => {
       vi.mocked(chatApi.deleteConversation).mockResolvedValue({})
@@ -301,13 +261,16 @@ describe('useChat', () => {
   })
 
   describe('refreshConversations', () => {
-    it('fetches saved conversations', async () => {
+    it('fetches all conversations (auto-saved)', async () => {
       vi.mocked(chatApi.listConversations).mockResolvedValue([
         {
           id: 'conv-1',
           organization_id: 'org-123',
           user_id: 'user-1',
-          title: 'Saved 1',
+          title: 'Conversation 1',
+          summary: 'A bathroom remodel project',
+          tags: ['bathroom'],
+          message_count: 5,
           is_saved: true,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
@@ -318,6 +281,18 @@ describe('useChat', () => {
 
       await waitFor(() => {
         expect(result.current.conversations).toHaveLength(1)
+        expect(result.current.conversations[0].summary).toBe('A bathroom remodel project')
+      })
+    })
+  })
+
+  describe('search', () => {
+    it('has initial search state', async () => {
+      const { result } = renderHook(() => useChat())
+
+      await waitFor(() => {
+        expect(result.current.searchQuery).toBe('')
+        expect(result.current.isSearching).toBe(false)
       })
     })
   })

@@ -49,6 +49,10 @@ class ConversationResponse(BaseModel):
     organization_id: str
     user_id: Optional[str] = None
     title: Optional[str] = None
+    summary: Optional[str] = None
+    tags: List[str] = []
+    message_count: int = 0
+    project_context: Optional[dict] = None
     is_saved: bool
     created_at: datetime
     updated_at: datetime
@@ -69,3 +73,25 @@ class ImageAnalysisResponse(BaseModel):
     success: bool
     analysis: str
     filename: Optional[str] = None
+
+
+class ConversationSearchResult(BaseModel):
+    """Response for a conversation search result."""
+    id: str
+    organization_id: str
+    user_id: Optional[str] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    tags: List[str] = []
+    message_count: int = 0
+    project_context: Optional[dict] = None
+    is_saved: bool
+    created_at: datetime
+    updated_at: datetime
+    rank: Optional[float] = None
+
+
+class SearchRequest(BaseModel):
+    """Request for conversation search."""
+    query: str
+    limit: int = 20
