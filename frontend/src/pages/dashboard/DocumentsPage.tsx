@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentApi } from '@/lib/api';
 import { DashboardLayout, OrganizationSetup } from '@/components/dashboard';
 import { DropZone } from '@/components/ui/DropZone';
 import { DocumentCard, EmptyState } from '@/components/dashboard/documents';
-import { fadeInUp, staggerContainer, staggerList, listItem } from '@/lib/animations';
+import { fadeInUp, staggerContainer } from '@/lib/animations';
 
 interface Document {
   id: string;
@@ -365,14 +365,34 @@ export function DocumentsPage() {
           {documents.length === 0 ? (
             <EmptyState />
           ) : (
-            <motion.div
-              key={documents.length}
-              variants={staggerList}
-              initial="hidden"
-              animate="visible"
-            >
+            <AnimatePresence initial={false} mode="popLayout">
               {documents.map((doc) => (
-                <motion.div key={doc.id} variants={listItem}>
+                <motion.div
+                  key={doc.id}
+                  layout
+                  initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                  animate={{
+                    opacity: 1,
+                    height: 'auto',
+                    scale: 1,
+                    transition: {
+                      height: { duration: 0.3, ease: [0.32, 0.72, 0, 1] },
+                      opacity: { duration: 0.25, delay: 0.1 },
+                      scale: { duration: 0.3, ease: [0.32, 0.72, 0, 1] },
+                    },
+                  }}
+                  exit={{
+                    opacity: 0,
+                    height: 0,
+                    scale: 0.95,
+                    transition: {
+                      height: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
+                      opacity: { duration: 0.15 },
+                      scale: { duration: 0.2 },
+                    },
+                  }}
+                  style={{ overflow: 'hidden' }}
+                >
                   <DocumentCard
                     document={doc}
                     onReprocess={() => handleReprocess(doc.id)}
@@ -382,7 +402,7 @@ export function DocumentsPage() {
                   />
                 </motion.div>
               ))}
-            </motion.div>
+            </AnimatePresence>
           )}
         </motion.div>
       </motion.div>
