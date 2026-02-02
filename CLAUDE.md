@@ -99,6 +99,12 @@ SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY, OPENAI_API_KEY
 VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_API_URL
 ```
 
+## Git Conventions
+
+When asked to add, commit, or push changes:
+- **Do NOT include** the `Co-Authored-By: Claude` signature in commit messages
+- Use descriptive commit messages with a summary line and bullet points for details
+
 ## Debugging Guide
 
 ### Methodology: Always Examine Both Layers
