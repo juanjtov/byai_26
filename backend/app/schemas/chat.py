@@ -53,6 +53,8 @@ class ConversationResponse(BaseModel):
     tags: List[str] = []
     message_count: int = 0
     project_context: Optional[dict] = None
+    pricing_mode: str = "pending"  # pending, criteria, historical, combined
+    pricing_assumptions: Optional[dict] = None
     is_saved: bool
     created_at: datetime
     updated_at: datetime

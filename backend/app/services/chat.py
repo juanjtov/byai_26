@@ -3,9 +3,12 @@ Chat service for AI-powered estimate generation.
 
 Handles conversations, messages, and RAG-enhanced AI responses.
 Includes automatic conversation persistence and context retrieval.
+Supports pricing mode selection and historical pricing context.
 """
 
 import asyncio
+import re
+from datetime import date
 from typing import Optional, List, Dict, AsyncGenerator
 
 from app.services.supabase import get_supabase_admin
@@ -13,6 +16,7 @@ from app.services.openrouter import OpenRouterService
 from app.services.embedding import EmbeddingService
 from app.services.organization import OrganizationService
 from app.services.format_extractor import FormatExtractorService
+from app.services.pricing_extractor import PricingExtractorService
 
 
 # Project type keywords for auto-tagging
@@ -37,6 +41,26 @@ PROJECT_TAGS = {
 class ChatService:
     """Service for managing chat conversations and AI responses."""
 
+    # Pricing mode options
+    PRICING_MODE_PENDING = "pending"
+    PRICING_MODE_CRITERIA = "criteria"
+    PRICING_MODE_HISTORICAL = "historical"
+    PRICING_MODE_COMBINED = "combined"
+
+    # Initial prompt to ask user about pricing approach
+    PRICING_MODE_PROMPT = """Before I create your estimate, I'd like to understand how you'd prefer me to calculate pricing:
+
+**Option 1: Use Configured Rates** (criteria)
+I'll use your organization's labor rates, overhead, and profit margins to calculate from scratch.
+
+**Option 2: Reference Historical Projects** (historical)
+I'll find similar projects from your uploaded documents (addendums, past estimates) and base pricing on those.
+
+**Option 3: Combined Approach** (combined) - *Recommended*
+I'll reference historical project pricing AND apply your configured margins. This gives the most accurate estimates.
+
+Which approach would you prefer? You can say "historical", "criteria", "combined", or describe what you'd like."""
+
     SYSTEM_PROMPT_TEMPLATE = """You are REMODLY AI, an expert estimating assistant for {company_name}.
 
 Your role is to help create accurate estimates for remodeling and renovation projects.
@@ -53,21 +77,53 @@ Your role is to help create accurate estimates for remodeling and renovation pro
 ## Relevant Document Context
 {document_context}
 
+{historical_pricing_context}
+
 {format_context}
 
 {past_context}
+
+## Pricing Estimation Guidelines
+
+### What Estimates Include
+**INCLUDED in your estimates:** Labor costs, rough materials (framing, drywall, wiring, plumbing supplies), permits
+**NOT INCLUDED (client-supplied):** Finish materials (tile, fixtures, appliances, vanities, countertops) unless specified
+
+### Estimation Process ({pricing_mode} mode)
+{pricing_mode_instructions}
+
+### Output Format for Estimates
+Always provide estimates in this format:
+1. **Price Range:** Low / Mid / High estimate
+2. **Reference Projects:** Which documents/past projects informed this estimate
+3. **Assumptions Made:** List EVERY assumption (be transparent)
+4. **Confidence Level:** High (strong references) / Medium (some gaps) / Low (limited data)
+5. **Line Item Breakdown:** Category, description, quantity, unit, cost
+
+### Assumptions Tracking
+When making assumptions, categorize them:
+| Category | Your Assumption | Flag When |
+|----------|----------------|-----------|
+| Square Footage | Use reference average | User didn't specify |
+| Material Grade | Mid-grade | User didn't specify |
+| Demolition | Included | Not mentioned |
+| Permits | Included | Varies by jurisdiction |
+| Timeline | Standard (no rush premium) | Not specified |
+| Finish Materials | Client-supplied | Always clarify |
+| Access Conditions | Standard access | Not mentioned |
 
 ## Assumption Handling Rules
 - NEVER invent project scope beyond what the user described
 - When details are unknown, use neutral phrasing: "Install vanity (size/style per owner selection)"
 - Ask clarifying questions for: dimensions, material grades, fixture counts, access conditions
 - Keep assumptions minimal and conservative
-- Do not include pricing unless you have specific rates from context
+- When using historical pricing, always cite the source document
 
 ## Quality Guidelines
 - Scope matches user intent exactly - no additions
 - All unknown specifications phrased neutrally
 - Pricing uses organization's actual rates from uploaded documents
+- Always show your work: how you arrived at the numbers
 
 ## Interaction Guidelines
 1. Ask clarifying questions about project scope, materials, and specifications before providing estimates
@@ -81,12 +137,42 @@ Your role is to help create accurate estimates for remodeling and renovation pro
 
 Remember: You represent this contractor's business. Use their actual rates and pricing from the context provided."""
 
+    # Pricing mode-specific instructions
+    PRICING_MODE_INSTRUCTIONS = {
+        "pending": """Not yet selected - ask the user which pricing approach they prefer before providing estimates.""",
+
+        "criteria": """1. Calculate labor hours based on scope
+2. Apply base labor rate (${labor_rate}/hr)
+3. Add material estimates based on industry standards
+4. Apply overhead ({overhead_markup}%) and profit margin ({profit_margin}%)
+5. Provide itemized breakdown""",
+
+        "historical": """1. Find 2-3 similar reference projects from historical addendums/estimates
+2. Extract relevant line items and totals
+3. Apply adjustments:
+   - Size scaling: Use 0.8 factor for economies of scale on larger projects
+   - Inflation: Add 3-5% per year from reference date
+   - Material upgrades/downgrades: ±15-30%
+4. Cite which documents informed the estimate""",
+
+        "combined": """1. Find 2-3 similar reference projects from historical addendums/estimates
+2. Calculate base price from references
+3. Validate against configured labor rates
+4. Apply adjustments:
+   - Size scaling: 0.8 factor for economies of scale
+   - Material upgrades/downgrades: ±15-30%
+   - Inflation: 3-5% per year from reference date
+5. Apply overhead ({overhead_markup}%) and profit margin ({profit_margin}%)
+6. Cite references and show calculation methodology"""
+    }
+
     def __init__(self):
         self.admin = get_supabase_admin()
         self.openrouter = OpenRouterService()
         self.embedding_service = EmbeddingService()
         self.org_service = OrganizationService()
         self.format_extractor = FormatExtractorService()
+        self.pricing_extractor = PricingExtractorService()
 
     async def create_conversation(
         self,
@@ -115,6 +201,8 @@ Remember: You represent this contractor's business. Use their actual rates and p
             "message_count": 0,
             "tags": [],
             "project_context": {},
+            "pricing_mode": self.PRICING_MODE_COMBINED,  # Default to combined for best results
+            "pricing_assumptions": {},
         }).execute()
 
         return result.data[0]
@@ -182,7 +270,8 @@ Remember: You represent this contractor's business. Use their actual rates and p
         org_id: str,
         user_id: str,
         user_message: str,
-        conversation_id: Optional[str] = None
+        conversation_id: Optional[str] = None,
+        pricing_mode: str = "pending"
     ) -> str:
         """
         Build system prompt with organization context, RAG, and past conversation context.
@@ -192,6 +281,7 @@ Remember: You represent this contractor's business. Use their actual rates and p
             user_id: User UUID for retrieving past conversations
             user_message: Current user message for RAG context
             conversation_id: Current conversation ID to exclude from context
+            pricing_mode: Pricing approach (pending, criteria, historical, combined)
 
         Returns:
             Formatted system prompt
@@ -203,6 +293,11 @@ Remember: You represent this contractor's business. Use their actual rates and p
 
         # Get RAG context from documents
         doc_context = await self.embedding_service.get_org_context(org_id, user_message)
+
+        # Get historical pricing context
+        historical_pricing_context = await self._build_historical_pricing_context(
+            org_id, user_message, pricing_mode
+        )
 
         # Get format patterns from documents
         format_patterns = await self.format_extractor.get_org_format_patterns(org_id)
@@ -240,6 +335,15 @@ Remember: You represent this contractor's business. Use their actual rates and p
             profit_margin = float(pricing.get("profit_margin") or 0) * 100
             region = pricing.get("region") or "Not specified"
 
+        # Get pricing mode instructions
+        pricing_mode_instructions = self.PRICING_MODE_INSTRUCTIONS.get(
+            pricing_mode, self.PRICING_MODE_INSTRUCTIONS["combined"]
+        ).format(
+            labor_rate=labor_rate,
+            overhead_markup=overhead_markup,
+            profit_margin=profit_margin
+        )
+
         return self.SYSTEM_PROMPT_TEMPLATE.format(
             company_name=company_name,
             labor_rate=labor_rate,
@@ -248,9 +352,200 @@ Remember: You represent this contractor's business. Use their actual rates and p
             region=region,
             labor_items=labor_items_str,
             document_context=doc_context or "No relevant documents found for this query.",
+            historical_pricing_context=historical_pricing_context,
             format_context=format_context,
             past_context=past_context,
+            pricing_mode=pricing_mode,
+            pricing_mode_instructions=pricing_mode_instructions,
         )
+
+    async def _build_historical_pricing_context(
+        self,
+        org_id: str,
+        user_message: str,
+        pricing_mode: str
+    ) -> str:
+        """
+        Build historical pricing context from similar projects.
+
+        Args:
+            org_id: Organization UUID
+            user_message: User's message to find relevant projects
+            pricing_mode: Current pricing mode
+
+        Returns:
+            Formatted historical pricing context string
+        """
+        # Skip if using criteria-only mode
+        if pricing_mode == self.PRICING_MODE_CRITERIA:
+            return ""
+
+        try:
+            # Find similar projects based on user's message
+            similar_projects = await self.pricing_extractor.find_similar_projects(
+                org_id, user_message, limit=3
+            )
+
+            if not similar_projects:
+                return """## Historical Pricing
+**⚠️ No similar historical projects found in your uploaded documents.**
+
+Your estimate will be based on configured labor rates and general industry standards.
+For more accurate, company-specific pricing:
+- Upload past addendums or estimates for similar projects
+- The AI will then base estimates on YOUR actual historical pricing
+
+**IMPORTANT:** When no historical data is available, clearly state this to the user and explain that the estimate is based on industry averages, not company-specific data."""
+
+            # Calculate average confidence
+            confidences = [p.get("confidence_score", 0.5) for p in similar_projects]
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0.5
+
+            # Build context header with strong instruction
+            context_parts = [
+                "## CRITICAL: Historical Pricing Data Available",
+                f"**Found {len(similar_projects)} similar project(s) from your documents.**",
+                "",
+                "**INSTRUCTION:** Base your estimate primarily on these reference projects. Do NOT use generic industry averages when this data is available. Always cite which document(s) informed your pricing.",
+                ""
+            ]
+
+            # Add confidence warning if low
+            if avg_confidence < 0.7:
+                context_parts.append(f"*Note: Data confidence is moderate ({avg_confidence:.0%}). Some line items may be incomplete.*\n")
+
+            today = date.today()
+
+            for i, project in enumerate(similar_projects, 1):
+                project_type = project.get("project_type", "Unknown")
+                total = project.get("total_amount")
+                labor = project.get("labor_total")
+                materials = project.get("materials_total")
+                project_date = project.get("project_date")
+                confidence = project.get("confidence_score", 0.5)
+
+                # Calculate inflation adjustment
+                inflation_note = ""
+                if project_date:
+                    try:
+                        proj_date = date.fromisoformat(str(project_date))
+                        years_old = (today - proj_date).days / 365
+                        if years_old > 0.5:
+                            inflation_pct = round(years_old * 4, 1)  # ~4% annual inflation
+                            inflation_note = f" (add ~{inflation_pct}% for inflation)"
+                    except (ValueError, TypeError):
+                        pass
+
+                project_line = f"### Reference {i}: {project_type}"
+                if project_date:
+                    project_line += f" ({project_date})"
+
+                context_parts.append(project_line)
+
+                if total:
+                    context_parts.append(f"- **Total:** ${total:,.2f}{inflation_note}")
+                if labor:
+                    context_parts.append(f"- **Labor:** ${labor:,.2f}")
+                if materials:
+                    context_parts.append(f"- **Materials:** ${materials:,.2f}")
+
+                # Include key line items (limit to 5 per project)
+                line_items = project.get("line_items") or []
+                if line_items and isinstance(line_items, list):
+                    context_parts.append("- **Key Line Items:**")
+                    for item in line_items[:5]:
+                        if isinstance(item, dict):
+                            item_name = item.get("item_name", "")
+                            item_cost = item.get("total_cost")
+                            if item_name and item_cost:
+                                context_parts.append(f"  - {item_name}: ${item_cost:,.2f}")
+
+                context_parts.append("")  # Add spacing between projects
+
+            return "\n".join(context_parts)
+
+        except Exception as e:
+            # Don't fail the request if historical pricing fails
+            print(f"Error building historical pricing context: {e}")
+            return ""
+
+    def detect_pricing_mode(self, user_message: str) -> Optional[str]:
+        """
+        Detect if user is selecting a pricing mode from their message.
+
+        Args:
+            user_message: User's response to pricing mode prompt
+
+        Returns:
+            Detected mode or None if not a mode selection
+        """
+        message_lower = user_message.lower().strip()
+
+        # Check for explicit mode mentions
+        if any(word in message_lower for word in ["criteria", "configured rate", "labor rate", "from scratch"]):
+            return self.PRICING_MODE_CRITERIA
+
+        if any(word in message_lower for word in ["historical", "past project", "reference", "similar project", "previous"]):
+            if "combined" in message_lower or "both" in message_lower:
+                return self.PRICING_MODE_COMBINED
+            return self.PRICING_MODE_HISTORICAL
+
+        if any(word in message_lower for word in ["combined", "both", "recommend"]):
+            return self.PRICING_MODE_COMBINED
+
+        # Check for option numbers
+        if re.search(r'\b(option\s*)?1\b', message_lower):
+            return self.PRICING_MODE_CRITERIA
+        if re.search(r'\b(option\s*)?2\b', message_lower):
+            return self.PRICING_MODE_HISTORICAL
+        if re.search(r'\b(option\s*)?3\b', message_lower):
+            return self.PRICING_MODE_COMBINED
+
+        return None
+
+    async def update_conversation_pricing_mode(
+        self,
+        conversation_id: str,
+        pricing_mode: str
+    ) -> dict:
+        """
+        Update the pricing mode for a conversation.
+
+        Args:
+            conversation_id: Conversation UUID
+            pricing_mode: New pricing mode
+
+        Returns:
+            Updated conversation
+        """
+        result = self.admin.table("chat_conversations").update({
+            "pricing_mode": pricing_mode,
+            "updated_at": "now()"
+        }).eq("id", conversation_id).execute()
+
+        return result.data[0] if result.data else {}
+
+    async def update_conversation_assumptions(
+        self,
+        conversation_id: str,
+        assumptions: dict
+    ) -> dict:
+        """
+        Update the pricing assumptions for a conversation.
+
+        Args:
+            conversation_id: Conversation UUID
+            assumptions: Dict of assumptions made
+
+        Returns:
+            Updated conversation
+        """
+        result = self.admin.table("chat_conversations").update({
+            "pricing_assumptions": assumptions,
+            "updated_at": "now()"
+        }).eq("id", conversation_id).execute()
+
+        return result.data[0] if result.data else {}
 
     def _build_format_context(self, format_patterns: dict | None) -> str:
         """
@@ -348,6 +643,9 @@ Once they specify, use that format consistently for the conversation."""
         """
         Stream AI response for a message.
 
+        Handles pricing mode selection on first message and injects
+        historical pricing context based on selected mode.
+
         Args:
             org_id: Organization UUID
             user_id: User UUID for context retrieval
@@ -359,18 +657,20 @@ Once they specify, use that format consistently for the conversation."""
         """
         # Get conversation history
         conv = await self.get_conversation(conversation_id)
+        history = conv.get("messages", []) if conv else []
+        # Default to combined mode for best results (uses both historical pricing AND configured rates)
+        pricing_mode = conv.get("pricing_mode", self.PRICING_MODE_COMBINED) if conv else self.PRICING_MODE_COMBINED
 
         # Build messages for API (limit history to recent messages)
-        history = conv.get("messages", []) if conv else []
         messages = [
             {"role": msg["role"], "content": msg["content"]}
             for msg in history[-20:]  # Keep last 20 messages for context
         ]
         messages.append({"role": "user", "content": user_message})
 
-        # Build system prompt with RAG context and past conversations
+        # Build system prompt with RAG context and pricing mode
         system_prompt = await self.build_system_prompt(
-            org_id, user_id, user_message, conversation_id
+            org_id, user_id, user_message, conversation_id, pricing_mode
         )
 
         # Collect full response for storage
@@ -388,7 +688,7 @@ Once they specify, use that format consistently for the conversation."""
             conversation_id,
             "assistant",
             full_response,
-            {"model": self.openrouter.default_model}
+            {"model": self.openrouter.default_model, "pricing_mode": pricing_mode}
         )
 
         # Update conversation metadata after response (async, don't block)

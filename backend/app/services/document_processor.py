@@ -3,6 +3,7 @@ Document processor service for text extraction and embedding.
 
 Extracts text from uploaded documents and creates embeddings for RAG.
 Also extracts formatting metadata (fonts, colors, styles) for format learning.
+Extracts structured pricing data from estimates and addendums.
 """
 
 import io
@@ -18,6 +19,7 @@ from app.services.supabase import get_supabase_admin
 from app.services.embedding import EmbeddingService
 from app.services.document import DocumentService
 from app.services.format_extractor import FormatExtractorService
+from app.services.pricing_extractor import PricingExtractorService
 
 
 class DocumentProcessorService:
@@ -26,11 +28,15 @@ class DocumentProcessorService:
     # Document types that should have format patterns extracted
     FORMAT_EXTRACTABLE_TYPES = ["contract", "estimate", "proposal", "invoice", "quote", "addendum"]
 
+    # Document types that should have pricing data extracted
+    PRICING_EXTRACTABLE_TYPES = ["estimate", "addendum", "invoice", "quote", "proposal"]
+
     def __init__(self):
         self.admin = get_supabase_admin()
         self.embedding_service = EmbeddingService()
         self.doc_service = DocumentService()
         self.format_extractor = FormatExtractorService()
+        self.pricing_extractor = PricingExtractorService()
 
     async def process_and_embed_document(self, doc_id: str, org_id: str) -> None:
         """
@@ -72,7 +78,7 @@ class DocumentProcessorService:
             text, formatting_metadata = await self.extract_text_with_formatting(download_url, mime_type)
 
             if text:
-                # Create embeddings
+                # Create embeddings with section-aware chunking
                 chunks_created = await self.embedding_service.embed_document(
                     doc_id,
                     org_id,
@@ -80,7 +86,8 @@ class DocumentProcessorService:
                     {
                         "name": doc.get("name", ""),
                         "type": doc.get("type", ""),
-                    }
+                    },
+                    use_section_chunking=True  # Enable section-aware chunking
                 )
                 logger.info(f"Document {doc_id}: created {chunks_created} embedding chunks")
 
@@ -95,6 +102,21 @@ class DocumentProcessorService:
                     )
                     format_extracted = patterns is not None
 
+                # Extract structured pricing for relevant document types
+                pricing_extracted = False
+                if doc_type in self.PRICING_EXTRACTABLE_TYPES:
+                    pricing_data = await self.pricing_extractor.extract_pricing_from_document(
+                        doc_id, org_id, text,
+                        doc_name=doc.get("name", ""),
+                        doc_type=doc_type
+                    )
+                    pricing_extracted = pricing_data is not None
+                    if pricing_extracted:
+                        logger.info(
+                            f"Document {doc_id}: extracted pricing data, "
+                            f"confidence: {pricing_data.get('confidence_score', 0):.2f}"
+                        )
+
                 # Update with extracted data
                 await self.doc_service.update_document_status(
                     doc_id,
@@ -103,6 +125,7 @@ class DocumentProcessorService:
                         "text_length": len(text),
                         "chunks_created": chunks_created,
                         "format_extracted": format_extracted,
+                        "pricing_extracted": pricing_extracted,
                     }
                 )
                 logger.info(f"Document {doc_id} processed successfully")
@@ -401,7 +424,7 @@ class DocumentProcessorService:
 
     async def reprocess_document(self, doc_id: str, org_id: str) -> None:
         """
-        Reprocess a document, deleting existing embeddings and format patterns first.
+        Reprocess a document, deleting existing embeddings, format patterns, and pricing first.
 
         Args:
             doc_id: Document UUID
@@ -410,12 +433,15 @@ class DocumentProcessorService:
         logger.info(f"Starting reprocess for document {doc_id}")
 
         try:
-            # Delete existing embeddings and format patterns
+            # Delete existing embeddings, format patterns, and pricing data
             await self.embedding_service.delete_document_embeddings(doc_id)
             logger.debug(f"Deleted existing embeddings for document {doc_id}")
 
             await self.format_extractor.delete_document_patterns(doc_id)
             logger.debug(f"Deleted existing format patterns for document {doc_id}")
+
+            await self.pricing_extractor.delete_document_pricing(doc_id)
+            logger.debug(f"Deleted existing pricing data for document {doc_id}")
 
             # Process again
             await self.process_and_embed_document(doc_id, org_id)
