@@ -20,6 +20,7 @@ export function ChatInterface() {
     loadConversation,
     startNewConversation,
     deleteConversation,
+    exportMessage,
     clearError,
   } = useChat();
 
@@ -89,7 +90,7 @@ export function ChatInterface() {
           ) : (
             <>
               {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage key={msg.id} message={msg} onExport={exportMessage} />
               ))}
               {isLoading && !isStreaming && <TypingIndicator />}
               <div ref={messagesEndRef} />

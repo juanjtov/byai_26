@@ -207,6 +207,17 @@ export const chatApi = {
   // Get stream URL for SSE
   getStreamUrl: (orgId: string) =>
     `${API_URL}/api/v1/organizations/${orgId}/chat/stream`,
+
+  // Export message as Word document
+  exportMessage: (orgId: string, conversationId: string, messageId: string | null, token: string) =>
+    api<{ download_url: string }>(
+      `/api/v1/organizations/${orgId}/chat/conversations/${conversationId}/export`,
+      {
+        method: 'POST',
+        body: messageId ? { message_id: messageId } : {},
+        token,
+      }
+    ),
 };
 
 // Waitlist endpoints (public, no auth required)

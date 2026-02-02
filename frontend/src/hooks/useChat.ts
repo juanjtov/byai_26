@@ -18,6 +18,7 @@ interface UseChatReturn {
   startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
+  exportMessage: (messageId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -325,6 +326,29 @@ export function useChat(): UseChatReturn {
     }
   }, [organization?.id, accessToken, conversationId, startNewConversation, refreshConversations]);
 
+  const exportMessage = useCallback(async (messageId: string) => {
+    if (!organization?.id || !accessToken || !conversationId) return;
+
+    setError(null);
+
+    try {
+      const response = await chatApi.exportMessage(
+        organization.id,
+        conversationId,
+        messageId,
+        accessToken
+      );
+
+      // Open download URL in new tab
+      if (response.download_url) {
+        window.open(response.download_url, '_blank');
+      }
+    } catch (err) {
+      console.error('Failed to export message:', err);
+      setError('Failed to export message as document');
+    }
+  }, [organization?.id, accessToken, conversationId]);
+
   return {
     messages,
     isLoading,
@@ -340,6 +364,7 @@ export function useChat(): UseChatReturn {
     startNewConversation,
     deleteConversation,
     refreshConversations,
+    exportMessage,
     clearError,
   };
 }

@@ -10,6 +10,7 @@ import json
 from app.dependencies import get_current_user_context
 from app.services.chat import ChatService
 from app.services.vision import VisionService
+from app.services.document_generator import DocumentGeneratorService
 from app.schemas.chat import (
     ConversationCreate,
     ConversationUpdate,
@@ -24,6 +25,7 @@ from app.schemas.chat import (
 router = APIRouter()
 chat_service = ChatService()
 vision_service = VisionService()
+document_generator = DocumentGeneratorService()
 
 
 @router.post("/{org_id}/chat/conversations", response_model=ConversationResponse)
@@ -338,3 +340,76 @@ async def extract_image_measurements(
         "analysis": result.get("measurements", ""),
         "filename": file.filename,
     }
+
+
+@router.post("/{org_id}/chat/conversations/{conversation_id}/export")
+async def export_conversation_message(
+    org_id: str,
+    conversation_id: str,
+    message_id: Optional[str] = None,
+    user_context: tuple = Depends(get_current_user_context),
+):
+    """
+    Export a conversation message as a Word document.
+
+    The document is styled using the organization's format patterns
+    (fonts, colors, sections) extracted from their uploaded documents.
+
+    Args:
+        org_id: Organization ID
+        conversation_id: Conversation ID
+        message_id: Optional specific message ID to export.
+                   If not provided, exports the last assistant message.
+
+    Returns:
+        {"download_url": "signed URL to download the document"}
+    """
+    user_id, current_org_id = user_context
+
+    if org_id != current_org_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get conversation
+    conv = await chat_service.get_conversation(conversation_id)
+    if not conv or conv["organization_id"] != org_id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    messages = conv.get("messages", [])
+    if not messages:
+        raise HTTPException(status_code=400, detail="No messages in conversation")
+
+    # Find the message to export
+    message_content = None
+    if message_id:
+        # Find specific message
+        for msg in messages:
+            if msg["id"] == message_id:
+                message_content = msg["content"]
+                break
+        if not message_content:
+            raise HTTPException(status_code=404, detail="Message not found")
+    else:
+        # Get last assistant message
+        for msg in reversed(messages):
+            if msg["role"] == "assistant":
+                message_content = msg["content"]
+                break
+        if not message_content:
+            raise HTTPException(status_code=400, detail="No assistant messages to export")
+
+    # Generate title from conversation
+    title = conv.get("title", "Estimate")
+    if title == "New Estimate":
+        title = "Estimate"
+
+    # Generate and upload document
+    try:
+        download_url = await document_generator.export_message(
+            org_id, message_content, title
+        )
+        return {"download_url": download_url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate document: {str(e)}"
+        )
